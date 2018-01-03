@@ -8,12 +8,25 @@ namespace UnityLogWrapper
 {
     public static class UnityLauncher
     {
-        public static bool Run(string args)
+        public enum RunResult
+        {
+            Failure,
+            Success,
+            FailedToStart
+        }
+
+        public enum ProcessResult
+        {
+            UseExitCode,
+            IgnoreExitCode,
+            FailedRun
+        }
+        public static RunResult Run(string args)
         {
             if (AlreadyRunning())
             {
                 Console.WriteLine($"Error: Unity is already running. Wait until the process is closed and try again");
-                return false;
+                return RunResult.FailedToStart;
             }
             File.Delete(Program.LogFile);
             Console.WriteLine($"Will now run:\n{Program.UnityExecutable} {args}");
@@ -32,37 +45,47 @@ namespace UnityLogWrapper
             var started = process.Start();
             Console.WriteLine($"Unity process spawned with Id: {process.Id}");
             StreamReader fs;
-            var ignoreExitCode = CheckForCleanupEntry(process);
+            var processResult = CheckForCleanupEntry(process);
+            process.WaitForExit();
+            if (processResult == ProcessResult.FailedRun)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("CheckForCleanupEntry flagged a failed run. Aborting");
+                Console.ForegroundColor = ConsoleColor.Gray;
+                return RunResult.Failure;
+            }
             Console.WriteLine($"Exeuction Done! Exit code: {process.ExitCode}");
 
 
             if (process.ExitCode != 0)
             {
-                if (ignoreExitCode)
+                if (processResult == ProcessResult.IgnoreExitCode)
                 {
                     Console.WriteLine("Exit code not 0, but this was expected in this case. Ignoring it");
                 }
                 else
                 {
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Exit code not 0, run failed.");
-                    return false;    
+                    Console.ForegroundColor = ConsoleColor.Gray;
+                    return RunResult.Failure;    
                 }                  
             
             }
-            return true;
+            return RunResult.Success;
         }
 
-        private static bool CheckForCleanupEntry(Process process)
+        private static ProcessResult CheckForCleanupEntry(Process process)
         {
             var fs = new FileStream(Program.LogFile, FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
             using (var stream = new StreamReader(fs))
             {
                 var waitingForDeath = false;
                 var waitingForDeathCounter = 10;
-                while (!process.HasExited)
+                while (true)
                 {
                     var line = stream.ReadLine();
-                    if (line == "Cleanup mono")
+                    if (IsExitMessage(line))
                     {
                         Console.WriteLine("Found editor shutdown log print. Waiting 10 seconds for process to quit");
                         waitingForDeath = true;
@@ -74,14 +97,34 @@ namespace UnityLogWrapper
                         {
                             Console.WriteLine("Editor did not quit after 10 seconds. Forcibly quitting and whitelisting the exit code");
                             process.Kill();
-                            return true;
+                            return ProcessResult.IgnoreExitCode;
                         }
                     }
-                //if(line.Contains())
+
+                    if (process.HasExited)
+                    {
+                        if (IsExitMessage(File.ReadLines(Program.LogFile).Last()))
+                        {
+                            Console.WriteLine("Unity has exited cleanly.");
+                            return ProcessResult.UseExitCode;
+                        }
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("Unity has exited, but did not print the proper cleanup, did it crash? Marking as failed");
+                        Console.ForegroundColor = ConsoleColor.Gray;
+                        return ProcessResult.FailedRun;
+                    }
                 }
             }
-            return false;
 
+        }
+
+        private static bool IsExitMessage(string line)
+        {
+            if (line == "Cleanup mono")
+                return true;
+            if (line == "Exiting batchmode successfully now!")
+                return true;
+            return false;
         }
 
         private static bool AlreadyRunning()

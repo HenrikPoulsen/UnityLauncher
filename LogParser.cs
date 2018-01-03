@@ -88,8 +88,6 @@ namespace UnityLogWrapper
                     Console.WriteLine(error);
                 }
             }
-            
-            Console.WriteLine($"Found {CompilerWarnings.Count} warnings and {CompilerErrors.Count} errors");
             return success;
         }
 

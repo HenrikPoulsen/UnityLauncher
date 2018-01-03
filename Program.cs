@@ -26,6 +26,7 @@ namespace UnityLogWrapper
         public static string LogFile { get; set; } = string.Empty;
         static int Main(string[] args)
         {
+            Console.ForegroundColor = ConsoleColor.Gray;
             var options = new OptionSet
             {
                 {
@@ -163,10 +164,46 @@ namespace UnityLogWrapper
                 }
             }
 
-            var success = UnityLauncher.Run(sb.ToString());
-            if (!LogParser.Parse() || !success)
+            var runResult = UnityLauncher.Run(sb.ToString());
+            if (runResult == UnityLauncher.RunResult.FailedToStart)
+                return -1;
+            if (!LogParser.Parse())
+                runResult = UnityLauncher.RunResult.Failure;
+
+            if ((Flags & Flag.RunTests) != Flag.None)
             {
+                if (File.Exists(TestResults))
+                {
+                    Console.WriteLine($"Parsing {TestResults}");
+                    if(CheckTestResults.Parse(TestResults) != UnityLauncher.RunResult.Success)
+                        runResult = UnityLauncher.RunResult.Failure;
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Could not find {TestResults}");
+                    Console.ForegroundColor = ConsoleColor.Gray;
+                    runResult = UnityLauncher.RunResult.Failure;
+                }
+            }
+            
+            Console.WriteLine($"Found {LogParser.CompilerWarnings.Count} warnings and {LogParser.CompilerErrors.Count} errors");
+            if ((Flags & Flag.RunTests) != Flag.None)
+            {
+                Console.WriteLine("Test results:");
+                Console.WriteLine($"  Total: {CheckTestResults.Summary.Total}");
+                Console.WriteLine($"  Passed: {CheckTestResults.Summary.Passed}");
+                Console.WriteLine($"  Failed: {CheckTestResults.Summary.Failed}");
+                Console.WriteLine($"  Ignored: {CheckTestResults.Summary.Ignored}");
+                Console.WriteLine($"  Inconclusive: {CheckTestResults.Summary.Inconclusive}");
+            }
+
+            if (runResult != UnityLauncher.RunResult.Success)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("Run has failed");
+                Console.ForegroundColor = ConsoleColor.Gray;
+                
                 return -1;
             }
 
