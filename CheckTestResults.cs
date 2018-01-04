@@ -21,7 +21,7 @@ namespace UnityLogWrapper
             public int Inconclusive;
             public int Passed;
             public int Failed;
-            public int Ignored;
+            public int Skipped;
         }
 
         private static string resultFileName = "";
@@ -91,22 +91,17 @@ namespace UnityLogWrapper
 
         private static void LoadTestResults(XmlElement rootNode)
         {
-            foreach (XmlNode node in rootNode.ChildNodes)
+            Summary.Total = Convert.ToInt32(rootNode.Attributes["total"].Value);
+            Summary.Passed = Convert.ToInt32(rootNode.Attributes["passed"].Value);
+            Summary.Failed = Convert.ToInt32(rootNode.Attributes["failed"].Value);
+            Summary.Inconclusive = Convert.ToInt32(rootNode.Attributes["inconclusive"].Value);
+            Summary.Skipped = Convert.ToInt32(rootNode.Attributes["skipped"].Value);
+            foreach (XmlNode childNode in rootNode.ChildNodes)
             {
-                if (node is XmlElement && node.LocalName == "test-run")
-                {
-                    Summary.Total = Convert.ToInt32(node.Attributes["total"].Value);
-                    Summary.Failed = Convert.ToInt32(node.Attributes["failed"].Value);
-                    Summary.Inconclusive = Convert.ToInt32(node.Attributes["inconclusive"].Value);
-                    Summary.Ignored = Convert.ToInt32(node.Attributes["ignored"].Value);
-                    foreach (XmlNode childNode in rootNode.ChildNodes)
-                    {
-                        if (childNode is XmlElement &&
-                            childNode.LocalName == "test-suite")
-                            LoadTestSuite((XmlElement) childNode);
-                    }    
-                }
-            }
+                if (childNode is XmlElement &&
+                    childNode.LocalName == "test-suite")
+                    LoadTestSuite((XmlElement) childNode);
+            }    
         }
 
         private static void LoadTestSuite(XmlElement suiteNode)

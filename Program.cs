@@ -194,8 +194,19 @@ namespace UnityLogWrapper
                 Console.WriteLine($"  Total: {CheckTestResults.Summary.Total}");
                 Console.WriteLine($"  Passed: {CheckTestResults.Summary.Passed}");
                 Console.WriteLine($"  Failed: {CheckTestResults.Summary.Failed}");
-                Console.WriteLine($"  Ignored: {CheckTestResults.Summary.Ignored}");
+                Console.WriteLine($"  Skipped: {CheckTestResults.Summary.Skipped}");
                 Console.WriteLine($"  Inconclusive: {CheckTestResults.Summary.Inconclusive}");
+
+                var actualCount = CheckTestResults.Summary.Passed +
+                                  CheckTestResults.Summary.Failed +
+                                  CheckTestResults.Summary.Skipped +
+                                  CheckTestResults.Summary.Inconclusive;
+
+                if (CheckTestResults.Summary.Total != actualCount)
+                {
+                    Console.WriteLine($"Test result sums don't match. Total was reported as {CheckTestResults.Summary.Total} but the numbers add up to {actualCount}");
+                    runResult = UnityLauncher.RunResult.Failure;
+                }
             }
 
             if (runResult != UnityLauncher.RunResult.Success)
@@ -206,7 +217,8 @@ namespace UnityLogWrapper
                 
                 return -1;
             }
-
+            
+            Console.WriteLine("Everything looks good. Run has passed");
             return 0;
         }
 
