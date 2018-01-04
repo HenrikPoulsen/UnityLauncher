@@ -99,8 +99,16 @@ namespace UnityLogWrapper
 
                     if (process.HasExited)
                     {
-                        if (waitingForDeath || IsExitMessage(File.ReadLines(Program.LogFile)))
+                        if (waitingForDeath)
                         {
+                            Console.WriteLine("Unity has exited cleanly.");
+                            return ProcessResult.UseExitCode;
+                        }
+
+                        while ((line = stream.ReadLine()) != null)
+                        {
+                            if (!IsExitMessage(line))
+                                continue;
                             Console.WriteLine("Unity has exited cleanly.");
                             return ProcessResult.UseExitCode;
                         }
