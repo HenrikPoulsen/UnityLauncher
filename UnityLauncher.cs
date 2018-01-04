@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -98,7 +99,7 @@ namespace UnityLogWrapper
 
                     if (process.HasExited)
                     {
-                        if (IsExitMessage(File.ReadLines(Program.LogFile).Last()))
+                        if (waitingForDeath || IsExitMessage(File.ReadLines(Program.LogFile)))
                         {
                             Console.WriteLine("Unity has exited cleanly.");
                             return ProcessResult.UseExitCode;
@@ -111,6 +112,11 @@ namespace UnityLogWrapper
                 }
             }
 
+        }
+
+        private static bool IsExitMessage(IEnumerable<string> readLines)
+        {
+            return readLines.Any(IsExitMessage);
         }
 
         private static bool IsExitMessage(string line)
