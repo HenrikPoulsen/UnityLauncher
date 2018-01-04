@@ -23,11 +23,6 @@ namespace UnityLogWrapper
         }
         public static RunResult Run(string args)
         {
-            if (AlreadyRunning())
-            {
-                Console.WriteLine($"Error: Unity is already running. Wait until the process is closed and try again");
-                return RunResult.FailedToStart;
-            }
             File.Delete(Program.LogFile);
             Console.WriteLine($"Will now run:\n{Program.UnityExecutable} {args}");
             var process = new Process()
@@ -124,15 +119,6 @@ namespace UnityLogWrapper
                 return true;
             if (line == "Exiting batchmode successfully now!")
                 return true;
-            return false;
-        }
-
-        private static bool AlreadyRunning()
-        {
-            if (Process.GetProcessesByName("Unity").Any())
-            {
-                return true;
-            }
             return false;
         }
     }
