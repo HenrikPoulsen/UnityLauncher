@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.Tracing;
 using System.IO;
 using System.Xml;
 
@@ -25,8 +24,8 @@ namespace UnityLogWrapper
         }
 
         private static string resultFileName = "";
-        public static List<FailedTest> Failures;
-        public static TestSummary Summary = new TestSummary();
+        private static List<FailedTest> Failures;
+        private static readonly TestSummary Summary = new TestSummary();
 
         public static UnityLauncher.RunResult Parse(string resultFileName)
         {
@@ -52,41 +51,42 @@ namespace UnityLogWrapper
             }
             catch (Exception ex)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-
-                Console.WriteLine($"Failed to parse {resultFileName}:");
-                Console.WriteLine(ex.Message);
+                RunLogger.LogResultError($"Failed to parse {resultFileName}:\n{ex.Message}");
                 return UnityLauncher.RunResult.FailedToStart;
             }
 
-
+            var result = UnityLauncher.RunResult.Success;
             if (Failures.Count > 0)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
+                RunLogger.LogError("Test failures found:");
 
-                //Print errors
-                Console.WriteLine("Tests failed");
-                Console.WriteLine("");
-
-                for (int I = 0; I < Failures.Count; I++)
+                for (int i = 0; i < Failures.Count; i++)
                 {
-                    Console.ForegroundColor = ConsoleColor.Magenta;
-                    Console.WriteLine("  " + (I + 1).ToString() +
-                                      ": " + Failures[I].Name);
-                    Console.ForegroundColor = ConsoleColor.Cyan;
-                    Console.Write(Failures[I].Message);
-                    Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.Write(Failures[I].StackTrace);
-
-                    Console.WriteLine("");
-                    Console.WriteLine("");
+                    RunLogger.LogError($"  {(i + 1)}: {Failures[i].Name}\n  {Failures[i].Message}\n  {Failures[i].StackTrace}\n\n");
                 }
 
-                //Stop and wait for user input
-                return UnityLauncher.RunResult.Failure;
+                result = UnityLauncher.RunResult.Failure;
+            }
+            
+            RunLogger.LogResultInfo("Test results:");
+            RunLogger.LogResultInfo($"  Total: {Summary.Total}");
+            RunLogger.LogResultInfo($"  Passed: {Summary.Passed}");
+            RunLogger.LogResultInfo($"  Failed: {Summary.Failed}");
+            RunLogger.LogResultInfo($"  Skipped: {Summary.Skipped}");
+            RunLogger.LogResultInfo($"  Inconclusive: {Summary.Inconclusive}");
+
+            var actualCount = Summary.Passed +
+                              Summary.Failed +
+                              Summary.Skipped +
+                              Summary.Inconclusive;
+
+            if (Summary.Total != actualCount)
+            {
+                RunLogger.LogResultError($"Test result sums don't match. Total was reported as {Summary.Total} but the numbers add up to {actualCount}");
+                result = UnityLauncher.RunResult.Failure;
             }
 
-            return UnityLauncher.RunResult.Success;
+            return result;
         }
 
         private static void LoadTestResults(XmlElement rootNode)

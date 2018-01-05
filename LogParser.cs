@@ -8,8 +8,8 @@ namespace UnityLogWrapper
 {
     public static class LogParser
     {
-        public static List<string> CompilerWarnings = new List<string>();
-        public static List<string> CompilerErrors = new List<string>();
+        private static readonly List<string> CompilerWarnings = new List<string>();
+        private static readonly List<string> CompilerErrors = new List<string>();
         public static bool Parse()
         {
             var success = true;
@@ -26,7 +26,7 @@ namespace UnityLogWrapper
                 return true;
             if (!File.Exists(Program.TestResults))
             {
-                Console.WriteLine($"Failed to find the test results file '{Program.TestResults}', failing run");
+                RunLogger.LogResultError($"Failed to find the test results file '{Program.TestResults}', failing run");
                 return false;
             }
 
@@ -36,7 +36,7 @@ namespace UnityLogWrapper
         private static bool ParseLogFile()
         {
             var success = true;
-            Console.WriteLine($"Parsing log located at {Path.GetFileName(Program.LogFile)}");
+            RunLogger.LogInfo($"Parsing log located at {Path.GetFileName(Program.LogFile)}");
             while (LogIsLocked())
             {
                 Thread.Sleep(1000);
@@ -69,25 +69,31 @@ namespace UnityLogWrapper
 
             if (CompilerWarnings.Any())
             {
-                Console.WriteLine("Found compiler warnings:");
+                RunLogger.LogInfo("Found compiler warnings:");
                 foreach (var warning in CompilerWarnings)
                 {
-                    Console.WriteLine(warning);
+                    RunLogger.LogWarning(warning);
                 }
                 if ((Program.Flags & Program.Flag.WarningsAsErrors) != Program.Flag.None)
                 {
                     success = false;
-                    Console.WriteLine("warningsasserrors has been set so marking the run as failed due to warnings");
+                    RunLogger.LogResultError("warningsasserrors has been set so marking the run as failed due to warnings");
                 }
             }
             if (CompilerErrors.Any())
             {
-                Console.WriteLine("Found compiler errors:");
+                RunLogger.LogError("Found compiler errors:");
                 foreach (var error in CompilerErrors)
                 {
-                    Console.WriteLine(error);
+                    RunLogger.LogError(error);
                 }
+                success = false;
             }
+            
+            if(!success)
+                RunLogger.LogResultError($"[Compiler] Found {LogParser.CompilerWarnings.Count} warnings and {LogParser.CompilerErrors.Count} errors");
+            else
+                RunLogger.LogResultInfo($"[Compiler] Found {LogParser.CompilerWarnings.Count} warnings and {LogParser.CompilerErrors.Count} errors");
             return success;
         }
 
@@ -105,7 +111,7 @@ namespace UnityLogWrapper
                 //still being written to
                 //or being processed by another thread
                 //or does not exist (has already been processed)
-                Console.WriteLine($"{Program.LogFile} is in use by another process. Waiting before parsing");
+                RunLogger.LogWarning($"{Program.LogFile} is in use by another process. Waiting before parsing");
                 return true;
             }
             finally

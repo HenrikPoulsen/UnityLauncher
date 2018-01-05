@@ -26,12 +26,11 @@ namespace UnityLogWrapper
         public static string LogFile { get; set; } = string.Empty;
         static int Main(string[] args)
         {
-            Console.ForegroundColor = ConsoleColor.Gray;
             var options = new OptionSet
             {
                 {
                     "batchmode", 
-                    "Run Unity in batch mode. This should always be used in conjunction with the other command line arguments, because it ensures no pop-up windows appear and eliminates the need for any human intervention. When an exception occurs during execution of the script code, the Asset server updates fail, or other operations that fail, Unity immediately exits with return code 1. \nNote that in batch mode, Unity sends a minimal version of its log output to the console. However, the Log Files still contain the full log information. Opening a project in batch mode while the Editor has the same project open is not supported; only a single instance of Unity can run at a time.",
+                    "Run Unity in batch mode. This should always be used in conjunction with the other command line arguments, because it ensures no pop-up windows appear and eliminates the need for any human intervention. When an exception occurs during execution of the script code, the Asset server updates fail, or other operations that fail, Unity immediately exits with return code 1. \nNote that in batch mode, Unity sends a minimal version of its log output to the RunLogger However, the Log Files still contain the full log information. Opening a project in batch mode while the Editor has the same project open is not supported; only a single instance of Unity can run at a time.",
                     v => Flags |= Flag.Batchmode
                 },
                 {
@@ -89,7 +88,7 @@ namespace UnityLogWrapper
             }
             catch (OptionException e)
             {
-                Console.WriteLine(e);
+                RunLogger.LogError(e.Message);
                 throw;
             }
 
@@ -99,7 +98,7 @@ namespace UnityLogWrapper
                 return -1;
             if (string.IsNullOrEmpty(LogFile))
             {
-                Console.WriteLine("logfile must be set");
+                RunLogger.LogError("logfile must be set");
                 return -1;
             }
             
@@ -114,36 +113,36 @@ namespace UnityLogWrapper
             
             if ((Flags & Flag.Batchmode) != Flag.None)
             {
-                Console.WriteLine("Batchmode is set");
+                RunLogger.LogInfo("Batchmode is set");
                 sb.Append("-batchmode ");
             }
 
             if ((Flags & Flag.NoGraphics) != Flag.None)
             {
-                Console.WriteLine("Nographics is set");
+                RunLogger.LogInfo("Nographics is set");
                 sb.Append("-nographics ");
             }
             
             if ((Flags & Flag.SilentCrashes) != Flag.None)
             {
-                Console.WriteLine("silentcrashes is set");
+                RunLogger.LogInfo("silentcrashes is set");
                 sb.Append("-silent-crashes ");
             }
             
             if ((Flags & Flag.WarningsAsErrors) != Flag.None)
             {
-                Console.WriteLine("warningsaserrors is set");
+                RunLogger.LogInfo("warningsaserrors is set");
                 
             }
             
             if ((Flags & Flag.RunTests) != Flag.None)
             {
-                Console.WriteLine("runtests is set");
+                RunLogger.LogInfo("runtests is set");
                 sb.Append("-runTests ");
 
                 if (string.IsNullOrEmpty(TestResults))
                 {
-                    Console.WriteLine("It is not recommended to set runtests but not testresults. It will not be able to parse the test results as part of the report");
+                    RunLogger.LogWarning("It is not recommended to set runtests but not testresults. It will not be able to parse the test results as part of the report");
                 }
                 else
                 {
@@ -153,10 +152,10 @@ namespace UnityLogWrapper
             
             if ((Flags & Flag.Quit) != Flag.None)
             {
-                Console.WriteLine("Quit is set");
+                RunLogger.LogInfo("Quit is set");
                 if ((Flags & Flag.RunTests) != Flag.None)
                 {
-                    Console.WriteLine("quit and runtests cannot be set at once. Ignoring quit command");
+                    RunLogger.LogWarning("quit and runtests cannot be set at once. Ignoring quit command");
                 }
                 else
                 {
@@ -174,51 +173,26 @@ namespace UnityLogWrapper
             {
                 if (File.Exists(TestResults))
                 {
-                    Console.WriteLine($"Parsing {TestResults}");
+                    RunLogger.LogInfo($"Parsing {TestResults}");
                     if(CheckTestResults.Parse(TestResults) != UnityLauncher.RunResult.Success)
                         runResult = UnityLauncher.RunResult.Failure;
                 }
                 else
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Could not find {TestResults}");
-                    Console.ForegroundColor = ConsoleColor.Gray;
-                    runResult = UnityLauncher.RunResult.Failure;
-                }
-            }
-            
-            Console.WriteLine($"Found {LogParser.CompilerWarnings.Count} warnings and {LogParser.CompilerErrors.Count} errors");
-            if ((Flags & Flag.RunTests) != Flag.None)
-            {
-                Console.WriteLine("Test results:");
-                Console.WriteLine($"  Total: {CheckTestResults.Summary.Total}");
-                Console.WriteLine($"  Passed: {CheckTestResults.Summary.Passed}");
-                Console.WriteLine($"  Failed: {CheckTestResults.Summary.Failed}");
-                Console.WriteLine($"  Skipped: {CheckTestResults.Summary.Skipped}");
-                Console.WriteLine($"  Inconclusive: {CheckTestResults.Summary.Inconclusive}");
-
-                var actualCount = CheckTestResults.Summary.Passed +
-                                  CheckTestResults.Summary.Failed +
-                                  CheckTestResults.Summary.Skipped +
-                                  CheckTestResults.Summary.Inconclusive;
-
-                if (CheckTestResults.Summary.Total != actualCount)
-                {
-                    Console.WriteLine($"Test result sums don't match. Total was reported as {CheckTestResults.Summary.Total} but the numbers add up to {actualCount}");
+                    RunLogger.LogError($"Could not find {TestResults}");
                     runResult = UnityLauncher.RunResult.Failure;
                 }
             }
 
             if (runResult != UnityLauncher.RunResult.Success)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Run has failed");
-                Console.ForegroundColor = ConsoleColor.Gray;
-                
+                RunLogger.LogResultError("Run has failed");
+                RunLogger.Dump();
                 return -1;
             }
             
-            Console.WriteLine("Everything looks good. Run has passed");
+            RunLogger.LogResultInfo("Everything looks good. Run has passed");
+            RunLogger.Dump();
             return 0;
         }
 
@@ -228,13 +202,13 @@ namespace UnityLogWrapper
         {
             if (string.IsNullOrEmpty(value))
             {
-                Console.WriteLine($"{key} must be set");
+                RunLogger.LogError($"{key} must be set");
                 return false;
             }
 
             if (!Directory.Exists(value) && !File.Exists(value))
             {
-                Console.WriteLine($"The path for '{key}' does not exist. '{value}'");
+                RunLogger.LogError($"The path for '{key}' does not exist. '{value}'");
                 return false;
             }
             return true;
