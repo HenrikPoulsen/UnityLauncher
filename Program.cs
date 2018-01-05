@@ -14,12 +14,13 @@ namespace UnityLogWrapper
         public enum Flag
         {
             None = 0,
-            Batchmode =      1 << 0,
-            Quit =          1 << 1,
-            NoGraphics =    1 << 2,
-            SilentCrashes = 1 << 3,
+            Batchmode        = 1 << 0,
+            Quit             = 1 << 1,
+            NoGraphics       = 1 << 2,
+            SilentCrashes    = 1 << 3,
             WarningsAsErrors = 1 << 4,
-            RunTests = 1 << 5,
+            RunTests         = 1 << 5,
+            Automated        = 1 << 6,
         }
         public static Flag Flags = 0;
         public static string UnityExecutable { get; set; } = string.Empty;
@@ -42,6 +43,11 @@ namespace UnityLogWrapper
                     "nographics",
                     "When running in batch mode, do not initialize the graphics device at all. This makes it possible to run your automated workflows on machines that don’t even have a GPU (automated workflows only work when you have a window in focus, otherwise you can’t send simulated input commands). Please note that -nographics does not allow you to bake GI, since Enlighten requires GPU acceleration.",
                     v => Flags |= Flag.NoGraphics
+                },
+                {
+                    "automated",
+                    "This flag enables some extra logging when running tests. Like when a test is started/finished/etc which is helpful for identifying which test is logging something or what the result of the test was if you don't want to parse the testresults file.",
+                    v => Flags |= Flag.Automated
                 },
                 {
                     "silentcrashes",
@@ -133,6 +139,12 @@ namespace UnityLogWrapper
             {
                 RunLogger.LogInfo("warningsaserrors is set");
                 
+            }
+
+            if ((Flags & Flag.Automated) != Flag.None)
+            {
+                RunLogger.LogInfo("automated is set");
+                sb.Append("-automated ");
             }
             
             if ((Flags & Flag.RunTests) != Flag.None)
