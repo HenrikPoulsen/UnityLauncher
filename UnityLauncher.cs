@@ -9,6 +9,9 @@ namespace UnityLogWrapper
 {
     public static class UnityLauncher
     {
+        private const int LinesToSave = 20;
+        private static Queue<string> _lastLines = new Queue<string>(LinesToSave);
+
         public enum RunResult
         {
             Failure,
@@ -77,6 +80,10 @@ namespace UnityLogWrapper
                 while (true)
                 {
                     var line = stream.ReadLine();
+                    if (line != null)
+                    {
+                        StashLine(line);
+                    }
                     if (IsExitMessage(line))
                     {
                         RunLogger.LogInfo("Found editor shutdown log print. Waiting 10 seconds for process to quit");
@@ -103,17 +110,31 @@ namespace UnityLogWrapper
 
                         while ((line = stream.ReadLine()) != null)
                         {
+                            StashLine(line);
                             if (!IsExitMessage(line))
                                 continue;
                             RunLogger.LogInfo("Unity has exited cleanly.");
                             return ProcessResult.UseExitCode;
                         }
-                        RunLogger.LogResultError("The unity process has exited, but did not print the proper cleanup, did it crash? Marking as failed");
+                        var writer = new StringWriter();
+                        writer.WriteLine($"The unity process has exited, but did not print the proper cleanup, did it crash? Marking as failed. The last {LinesToSave} lines of the log was:");
+                        foreach(var entry in _lastLines)
+                        {
+                            writer.WriteLine($"  {entry}");
+                        }
+                        RunLogger.LogResultError(writer.ToString());
                         return ProcessResult.FailedRun;
                     }
                 }
             }
 
+        }
+
+        private static void StashLine(string line)
+        {
+            if (_lastLines.Count >= LinesToSave)
+                _lastLines.Dequeue();
+            _lastLines.Enqueue(line);
         }
 
         private static bool IsExitMessage(IEnumerable<string> readLines)
