@@ -69,6 +69,7 @@ namespace UnityLogWrapper
 
             if (CompilerWarnings.Any())
             {
+                Console.Write("\n");
                 RunLogger.LogInfo("Found compiler warnings:");
                 foreach (var warning in CompilerWarnings)
                 {
@@ -79,15 +80,18 @@ namespace UnityLogWrapper
                     success = false;
                     RunLogger.LogResultError("warningsasserrors has been set so marking the run as failed due to warnings");
                 }
+                Console.Write("\n");
             }
             if (CompilerErrors.Any())
             {
+                Console.Write("\n");
                 RunLogger.LogError("Found compiler errors:");
                 foreach (var error in CompilerErrors)
                 {
                     RunLogger.LogError(error);
                 }
                 success = false;
+                Console.Write("\n");
             }
             
             if(!success)
