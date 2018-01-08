@@ -77,6 +77,7 @@ namespace UnityLogWrapper
             {
                 var waitingForDeath = false;
                 var waitingForDeathCounter = 10;
+                var failureMessagePrinted = false;
                 while (true)
                 {
                     var line = stream.ReadLine();
@@ -84,6 +85,12 @@ namespace UnityLogWrapper
                     {
                         StashLine(line);
                     }
+                    if (IsFailureMessage(line))
+                    {
+                        failureMessagePrinted = true;
+                        RunLogger.LogError(line);
+                    }
+                        
                     if (IsExitMessage(line))
                     {
                         RunLogger.LogInfo("Found editor shutdown log print. Waiting 10 seconds for process to quit");
@@ -111,10 +118,18 @@ namespace UnityLogWrapper
                         while ((line = stream.ReadLine()) != null)
                         {
                             StashLine(line);
+                            if (IsFailureMessage(line))
+                                failureMessagePrinted = true;
                             if (!IsExitMessage(line))
                                 continue;
                             RunLogger.LogInfo("Unity has exited cleanly.");
                             return ProcessResult.UseExitCode;
+                        }
+
+                        if (failureMessagePrinted)
+                        {
+                            RunLogger.LogResultError("The unity process has exited, but a log failure message was detected, flagging run as failed.");
+                            return ProcessResult.FailedRun;
                         }
                         var writer = new StringWriter();
                         writer.WriteLine($"The unity process has exited, but did not print the proper cleanup, did it crash? Marking as failed. The last {LinesToSave} lines of the log was:");
@@ -147,6 +162,19 @@ namespace UnityLogWrapper
             if (line == "Cleanup mono")
                 return true;
             if (line == "Exiting batchmode successfully now!")
+                return true;
+            return false;
+        }
+
+        private static bool IsFailureMessage(string line)
+        {
+            if (line == "Error building Player because scripts had compiler errors")
+                return true;
+            if (line == "Failed to build player.")
+                return true;
+            if (line == "Aborting batchmode due to failure:")
+                return true;
+            if (line == "Failed to build player.")
                 return true;
             return false;
         }
