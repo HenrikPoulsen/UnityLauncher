@@ -23,6 +23,9 @@ namespace UnityLogWrapper
             Automated        = 1 << 6,
         }
         public static Flag Flags = 0;
+        private static string buildLinux64Player;
+        private static string buildOSXUniversalPlayer;
+        private static string buildWindows64Player;
         public static string UnityExecutable { get; set; } = string.Empty;
         public static string LogFile { get; set; } = string.Empty;
         static int Main(string[] args)
@@ -84,6 +87,21 @@ namespace UnityLogWrapper
                     "The path indicating where the result file should be saved. The result file is saved in Project’s root folder by default.",
                     v => TestResults = v
                 },
+                {
+                    "buildLinux64Player=",
+                    "Build a 64-bit standalone Linux player (for example, -buildLinux64Player path/to/your/build)",
+                    v => buildLinux64Player = v
+                },
+                {
+                    "buildOSXUniversalPlayer=",
+                    "Build a combined 32-bit and 64-bit standalone Mac OSX player (for example, -buildOSXUniversalPlayer path/to/your/build.app).",
+                    v => buildOSXUniversalPlayer = v
+                },
+                {
+                    "buildWindows64Player=",
+                    "Build a 64-bit standalone Windows player (for example, -buildWindows64Player path/to/your/build.exe).",
+                    v => buildWindows64Player = v
+                }
                 
             };
 
@@ -173,6 +191,24 @@ namespace UnityLogWrapper
                 {
                     sb.Append("-quit ");                    
                 }
+            }
+
+            if (!string.IsNullOrEmpty(buildWindows64Player))
+            {
+                RunLogger.LogInfo("buildWindows64Player is set");
+                sb.Append($"-buildWindows64Player {buildWindows64Player} ");
+            }
+
+            if (!string.IsNullOrEmpty(buildLinux64Player))
+            {
+                RunLogger.LogInfo("buildLinux64Player is set");
+                sb.Append($"-buildLinux64Player {buildLinux64Player} ");
+            }
+
+            if (!string.IsNullOrEmpty(buildOSXUniversalPlayer))
+            {
+                RunLogger.LogInfo("buildOSXUniversalPlayer is set");
+                sb.Append($"-buildOSXUniversalPlayer {buildOSXUniversalPlayer} ");
             }
 
             var runResult = UnityLauncher.Run(sb.ToString());
