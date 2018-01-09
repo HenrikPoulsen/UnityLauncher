@@ -23,7 +23,7 @@ namespace UnityLogWrapper
             Automated        = 1 << 6,
         }
         public static Flag Flags = 0;
-        private static string buildLinux64Player;
+        private static string buildLinuxUniversalPlayer;
         private static string buildOSXUniversalPlayer;
         private static string buildWindows64Player;
         public static string UnityExecutable { get; set; } = string.Empty;
@@ -88,9 +88,9 @@ namespace UnityLogWrapper
                     v => TestResults = v
                 },
                 {
-                    "buildLinux64Player=",
-                    "Build a 64-bit standalone Linux player (for example, -buildLinux64Player path/to/your/build)",
-                    v => buildLinux64Player = v
+                    "buildLinuxUniversalPlayer=",
+                    "Build a combined 32-bit and 64-bit standalone Linux player (for example, -buildLinuxUniversalPlayer path/to/your/build).",
+                    v => buildLinuxUniversalPlayer = v
                 },
                 {
                     "buildOSXUniversalPlayer=",
@@ -199,10 +199,10 @@ namespace UnityLogWrapper
                 sb.Append($"-buildWindows64Player {buildWindows64Player} ");
             }
 
-            if (!string.IsNullOrEmpty(buildLinux64Player))
+            if (!string.IsNullOrEmpty(buildLinuxUniversalPlayer))
             {
-                RunLogger.LogInfo("buildLinux64Player is set");
-                sb.Append($"-buildLinux64Player {buildLinux64Player} ");
+                RunLogger.LogInfo("buildLinuxUniversalPlayer is set");
+                sb.Append($"-buildLinuxUniversalPlayer {buildLinuxUniversalPlayer} ");
             }
 
             if (!string.IsNullOrEmpty(buildOSXUniversalPlayer))
