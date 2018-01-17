@@ -176,6 +176,8 @@ namespace UnityLogWrapper
                 return true;
             if (line == "Failed to build player.")
                 return true;
+            if (line == "No tests were executed")
+                return true;
             return false;
         }
     }

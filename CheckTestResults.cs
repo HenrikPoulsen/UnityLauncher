@@ -75,6 +75,11 @@ namespace UnityLogWrapper
             RunLogger.LogResultInfo($"  Skipped: {Summary.Skipped}");
             RunLogger.LogResultInfo($"  Inconclusive: {Summary.Inconclusive}");
 
+            if (Summary.Total == 0)
+            {
+                RunLogger.LogResultInfo("No tests were executed");
+            }
+
             var actualCount = Summary.Passed +
                               Summary.Failed +
                               Summary.Skipped +
