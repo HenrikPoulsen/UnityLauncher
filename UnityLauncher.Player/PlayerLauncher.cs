@@ -116,10 +116,8 @@ namespace UnityLauncher.Player
                             RunLogger.LogResultError("The process has exited, but a log failure message was detected, flagging run as failed.");
                             return ProcessResult.FailedRun;
                         }
-                        var writer = new StringWriter();
-                        writer.WriteLine($"The process has exited, but did not print the proper cleanup, did it crash? Marking as failed. TODO ADD MORE INFO");
-                        RunLogger.LogResultError(writer.ToString());
-                        return ProcessResult.FailedRun;
+                        
+                        return ProcessResult.UseExitCode;
                     }
                 }
             }
