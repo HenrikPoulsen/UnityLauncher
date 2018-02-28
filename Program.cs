@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
@@ -22,7 +23,15 @@ namespace UnityLogWrapper
             RunTests         = 1 << 5,
             Automated        = 1 << 6,
         }
+
+        public enum ScriptingBackend
+        {
+            current = -1,
+            mono = 0,
+            il2cpp = 1
+        }
         public static Flag Flags = 0;
+        public static ScriptingBackend ScriptingBackendOverride = ScriptingBackend.current;
         private static string buildLinuxUniversalPlayer;
         private static string buildOSXUniversalPlayer;
         private static string buildWindows64Player;
@@ -88,6 +97,11 @@ namespace UnityLogWrapper
                     v => TestResults = v
                 },
                 {
+                    "scriptingBackend=",
+                    "Will hack in the scripting backend for standalone in the ProjectSettings.asset so you can easily toggle it in CI",
+                    v => ScriptingBackendOverride = Enum.Parse<ScriptingBackend>(v)
+                },
+                {
                     "buildLinuxUniversalPlayer=",
                     "Build a combined 32-bit and 64-bit standalone Linux player (for example, -buildLinuxUniversalPlayer path/to/your/build).",
                     v => buildLinuxUniversalPlayer = v
@@ -124,6 +138,15 @@ namespace UnityLogWrapper
             {
                 RunLogger.LogError("logfile must be set");
                 return -1;
+            }
+
+            if (ScriptingBackendOverride != ScriptingBackend.current)
+            {
+                var result = SetScriptingBackend(ScriptingBackendOverride, ProjectPath);
+                if (result != 0)
+                {
+                    return -1;
+                }
             }
             
             if(!IsValidPath("logfile", new FileInfo(LogFile).Directory.FullName))
@@ -241,6 +264,49 @@ namespace UnityLogWrapper
             
             RunLogger.LogResultInfo("Everything looks good. Run has passed");
             RunLogger.Dump();
+            return 0;
+        }
+
+        static int SetScriptingBackend(ScriptingBackend scriptingBackend, string projectPath)
+        {
+            var filePath = $"{projectPath}/ProjectSettings/ProjectSettings.asset";
+            if (!File.Exists(filePath))
+            {
+                RunLogger.LogError($"Could not find {filePath} to set scriptingBackend in");
+                return -1;
+            }
+                
+            var file = File.ReadAllLines(filePath).ToList();
+
+            var sectionEmptyIndex = -1;
+            var foundSection = false;
+            for(var i = 0; i < file.Count; i++)
+            {
+                var line = file[i];
+                var trimmed = line.Trim();
+                if (!foundSection)
+                {
+                     if(!trimmed.StartsWith("scriptingBackend"))
+                        continue;
+                    
+                    foundSection = true;
+                    if (trimmed.EndsWith("}"))
+                    {
+                        sectionEmptyIndex = i;
+                        file[i] = "  scriptingBackend: ";
+                        file.Insert(i+1, $"    Standalone: {(int)scriptingBackend}");
+                        break;
+                    }
+                }
+
+                if (!trimmed.StartsWith("Standalone: "))
+                    continue;
+
+                file[i] = $"    Standalone: {(int)scriptingBackend}";
+                break;
+            }
+            
+            File.WriteAllLines(filePath, file);
             return 0;
         }
 
