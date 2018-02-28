@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -234,7 +235,10 @@ namespace UnityLogWrapper
                 sb.Append($"-buildOSXUniversalPlayer {buildOSXUniversalPlayer} ");
             }
 
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
             var runResult = UnityLauncher.Run(sb.ToString());
+            RunLogger.LogResultInfo($"Command execution took: {stopwatch.Elapsed}");
             if (runResult == UnityLauncher.RunResult.FailedToStart)
                 return -1;
             if (!LogParser.Parse())
