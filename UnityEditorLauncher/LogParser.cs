@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using UnityLauncher.Core;
 
-namespace UnityLogWrapper
+namespace UnityLauncher.Editor
 {
     public static class LogParser
     {

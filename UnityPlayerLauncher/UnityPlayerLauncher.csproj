@@ -1,8 +1,17 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-    <PropertyGroup>
-        <OutputType>Exe</OutputType>
-        <TargetFramework>netcoreapp2.0</TargetFramework>
-    </PropertyGroup>
-
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <AssemblyName>UnityLauncher.Player</AssemblyName>
+    <RootNamespace>UnityLauncher.Player</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="NDesk.Options" Version="0.2.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\UnityLauncher.Core\UnityLauncher.Core.csproj">
+      <Project>{7417AE0F-8182-41E7-93E3-C539B258764B}</Project>
+      <Name>UnityLauncher.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
 </Project>

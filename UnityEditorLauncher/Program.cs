@@ -7,8 +7,9 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using NDesk.Options;
+using UnityLauncher.Core;
 
-namespace UnityLogWrapper
+namespace UnityLauncher.Editor
 {
     class Program
     {
@@ -23,6 +24,7 @@ namespace UnityLogWrapper
             WarningsAsErrors = 1 << 4,
             RunTests         = 1 << 5,
             Automated        = 1 << 6,
+            TimeoutIgnore    = 1 << 7,
         }
 
         public enum ScriptingBackend
@@ -31,11 +33,19 @@ namespace UnityLogWrapper
             mono = 0,
             il2cpp = 1
         }
+        public enum DisplayResolutionDialog
+        {
+            current = -1,
+            disabled = 0,
+            enabled = 1,
+        }
         public static Flag Flags = 0;
         public static ScriptingBackend ScriptingBackendOverride = ScriptingBackend.current;
+        public static DisplayResolutionDialog DisplayResolutionDialogOverride = DisplayResolutionDialog.current;
         private static string buildLinuxUniversalPlayer;
         private static string buildOSXUniversalPlayer;
         private static string buildWindows64Player;
+        public static int? ExecutionTimeout;
         public static string UnityExecutable { get; set; } = string.Empty;
         public static string LogFile { get; set; } = string.Empty;
         static int Main(string[] args)
@@ -99,8 +109,13 @@ namespace UnityLogWrapper
                 },
                 {
                     "scriptingBackend=",
-                    "Will hack in the scripting backend for standalone in the ProjectSettings.asset so you can easily toggle it in CI",
+                    "Will hack in the scripting backend for standalone in the ProjectSettings.asset so you can easily toggle it in CI. Valid values are: mono, il2cpp",
                     v => ScriptingBackendOverride = Enum.Parse<ScriptingBackend>(v)
+                },
+                {
+                    "displayResolutionDialog=",
+                    "Will hack in if the display resolution dialog should be enabled or not in built players into the ProjectSettings.asset. Valid values are: enabled, disabled",
+                    v => DisplayResolutionDialogOverride = Enum.Parse<DisplayResolutionDialog>(v)
                 },
                 {
                     "buildLinuxUniversalPlayer=",
@@ -116,6 +131,16 @@ namespace UnityLogWrapper
                     "buildWindows64Player=",
                     "Build a 64-bit standalone Windows player (for example, -buildWindows64Player path/to/your/build.exe).",
                     v => buildWindows64Player = v
+                },
+                {
+                    "timeout=",
+                    "Timeout the execution after the supplied seconds. Will fail run if -timeoutIgnore is not set and it times out",
+                    v => ExecutionTimeout = int.Parse(v)
+                },
+                {
+                    "timeoutIgnore",
+                    "Indicates that if the exeuction times out it should not flag it as a failure if everything else is ok",
+                    v => Flags |= Flag.TimeoutIgnore
                 }
                 
             };
@@ -141,14 +166,12 @@ namespace UnityLogWrapper
                 return -1;
             }
 
-            if (ScriptingBackendOverride != ScriptingBackend.current)
+            var result = UpdateProjectSettings(ProjectPath);
+            if (result != 0)
             {
-                var result = SetScriptingBackend(ScriptingBackendOverride, ProjectPath);
-                if (result != 0)
-                {
-                    return -1;
-                }
+                return -1;
             }
+
             
             if(!IsValidPath("logfile", new FileInfo(LogFile).Directory.FullName))
                 return -1;
@@ -180,6 +203,12 @@ namespace UnityLogWrapper
             if ((Flags & Flag.WarningsAsErrors) != Flag.None)
             {
                 RunLogger.LogInfo("warningsaserrors is set");
+                
+            }
+            
+            if ((Flags & Flag.TimeoutIgnore) != Flag.None)
+            {
+                RunLogger.LogInfo("timeoutIgnore is set");
                 
             }
 
@@ -239,27 +268,27 @@ namespace UnityLogWrapper
             stopwatch.Start();
             var runResult = UnityLauncher.Run(sb.ToString());
             RunLogger.LogResultInfo($"Command execution took: {stopwatch.Elapsed}");
-            if (runResult == UnityLauncher.RunResult.FailedToStart)
+            if (runResult == RunResult.FailedToStart)
                 return -1;
             if (!LogParser.Parse())
-                runResult = UnityLauncher.RunResult.Failure;
+                runResult = RunResult.Failure;
 
             if ((Flags & Flag.RunTests) != Flag.None)
             {
                 if (File.Exists(TestResults))
                 {
                     RunLogger.LogInfo($"Parsing {TestResults}");
-                    if(CheckTestResults.Parse(TestResults) != UnityLauncher.RunResult.Success)
-                        runResult = UnityLauncher.RunResult.Failure;
+                    if(CheckTestResults.Parse(TestResults) != RunResult.Success)
+                        runResult = RunResult.Failure;
                 }
                 else
                 {
                     RunLogger.LogError($"Could not find {TestResults}");
-                    runResult = UnityLauncher.RunResult.Failure;
+                    runResult = RunResult.Failure;
                 }
             }
 
-            if (runResult != UnityLauncher.RunResult.Success)
+            if (runResult != RunResult.Success)
             {
                 RunLogger.LogResultError("Run has failed");
                 RunLogger.Dump();
@@ -271,7 +300,7 @@ namespace UnityLogWrapper
             return 0;
         }
 
-        static int SetScriptingBackend(ScriptingBackend scriptingBackend, string projectPath)
+        static int UpdateProjectSettings(string projectPath)
         {
             var filePath = $"{projectPath}/ProjectSettings/ProjectSettings.asset";
             if (!File.Exists(filePath))
@@ -282,7 +311,36 @@ namespace UnityLogWrapper
                 
             var file = File.ReadAllLines(filePath).ToList();
 
-            var sectionEmptyIndex = -1;
+            UpdateScriptingBackend(ref file);
+            UpdateResolutionDialog(ref file);
+
+            
+            
+            File.WriteAllLines(filePath, file);
+            return 0;
+        }
+
+        static void UpdateResolutionDialog(ref List<string> file)
+        {
+            if (DisplayResolutionDialogOverride == DisplayResolutionDialog.current)
+                return;
+            for(var i = 0; i < file.Count; i++)
+            {
+                var line = file[i];
+                var trimmed = line.Trim();
+                if(!trimmed.StartsWith("displayResolutionDialog:"))
+                        continue;
+
+                file[i] = $"  displayResolutionDialog: {(int)DisplayResolutionDialogOverride}";
+                break;
+            }
+        }
+
+        static void UpdateScriptingBackend(ref List<string> file)
+        {
+            if (ScriptingBackendOverride == ScriptingBackend.current)
+                return;
+            
             var foundSection = false;
             for(var i = 0; i < file.Count; i++)
             {
@@ -290,15 +348,14 @@ namespace UnityLogWrapper
                 var trimmed = line.Trim();
                 if (!foundSection)
                 {
-                     if(!trimmed.StartsWith("scriptingBackend"))
+                    if(!trimmed.StartsWith("scriptingBackend"))
                         continue;
                     
                     foundSection = true;
                     if (trimmed.EndsWith("}"))
                     {
-                        sectionEmptyIndex = i;
                         file[i] = "  scriptingBackend: ";
-                        file.Insert(i+1, $"    Standalone: {(int)scriptingBackend}");
+                        file.Insert(i+1, $"    Standalone: {(int)ScriptingBackendOverride}");
                         break;
                     }
                 }
@@ -306,12 +363,9 @@ namespace UnityLogWrapper
                 if (!trimmed.StartsWith("Standalone: "))
                     continue;
 
-                file[i] = $"    Standalone: {(int)scriptingBackend}";
+                file[i] = $"    Standalone: {(int)ScriptingBackendOverride}";
                 break;
             }
-            
-            File.WriteAllLines(filePath, file);
-            return 0;
         }
 
         public static string TestResults { get; set; } = string.Empty;

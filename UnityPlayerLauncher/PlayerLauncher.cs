@@ -1,28 +1,23 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using UnityLauncher.Core;
 
-namespace UnityLauncher.Editor
+namespace UnityLauncher.Player
 {
-    public static class UnityLauncher
+    public class PlayerLauncher
     {
-        private const int LinesToSave = 20;
-        private static Queue<string> _lastLines = new Queue<string>(LinesToSave);
-
-        
         public static RunResult Run(string args)
         {
             File.Delete(Program.LogFile);
-            RunLogger.LogInfo($"Will now run:\n{Program.UnityExecutable} {args}");
+            RunLogger.LogInfo($"Will now run:\n{Program.Executable} {args}");
             var process = new Process()
             {
                 StartInfo = new ProcessStartInfo
                 {
-                    FileName = Program.UnityExecutable,
+                    FileName = Program.Executable,
                     Arguments = args,
                     RedirectStandardOutput = true,
                     UseShellExecute = false,
@@ -31,7 +26,7 @@ namespace UnityLauncher.Editor
             };
 
             var started = process.Start();
-            RunLogger.LogInfo($"Unity process spawned with pid: {process.Id}");
+            RunLogger.LogInfo($"Process spawned with pid: {process.Id}");
             StreamReader fs;
             var processResult = CheckForCleanupEntry(process);
             process.WaitForExit();
@@ -67,15 +62,11 @@ namespace UnityLauncher.Editor
             using (var stream = new StreamReader(fs))
             {
                 var waitingForDeath = false;
-                var waitingForDeathCounter = 10;
                 var failureMessagePrinted = false;
                 while (true)
                 {
                     var line = stream.ReadLine();
-                    if (line != null)
-                    {
-                        StashLine(line);
-                    }
+
                     if (IsFailureMessage(line))
                     {
                         failureMessagePrinted = true;
@@ -84,19 +75,9 @@ namespace UnityLauncher.Editor
                         
                     if (IsExitMessage(line))
                     {
-                        RunLogger.LogInfo("Found editor shutdown log print. Waiting 10 seconds for process to quit");
+                        RunLogger.LogInfo("Found shutdown log print. Waiting 10 seconds for process to quit");
                         waitingForDeath = true;
                     }
-                    if (waitingForDeath)
-                    {
-                        Thread.Sleep(1000);
-                        if (waitingForDeathCounter-- <= 0)
-                        {
-                            RunLogger.LogInfo("Editor did not quit after 10 seconds. Forcibly quitting and whitelisting the exit code");
-                            process.Kill();
-                            return ProcessResult.IgnoreExitCode;
-                        }
-                    } 
                     else if (Program.ExecutionTimeout.HasValue && timeoutStopwatch.ElapsedMilliseconds > Program.ExecutionTimeout.Value * 1000)
                     {
                         if ((Program.Flags & Program.Flag.TimeoutIgnore) != Program.Flag.None)
@@ -109,52 +90,40 @@ namespace UnityLauncher.Editor
                         }
 
                         process.Kill();
-                        return ProcessResult.UseExitCode;
+                        return ProcessResult.IgnoreExitCode;
                     }
 
                     if (process.HasExited)
                     {
                         if (waitingForDeath)
                         {
-                            RunLogger.LogInfo("Unity has exited cleanly.");
+                            RunLogger.LogInfo("Player has exited cleanly.");
                             return ProcessResult.UseExitCode;
                         }
 
                         while ((line = stream.ReadLine()) != null)
                         {
-                            StashLine(line);
                             if (IsFailureMessage(line))
                                 failureMessagePrinted = true;
                             if (!IsExitMessage(line))
                                 continue;
-                            RunLogger.LogInfo("Unity has exited cleanly.");
+                            RunLogger.LogInfo("Player has exited cleanly.");
                             return ProcessResult.UseExitCode;
                         }
 
                         if (failureMessagePrinted)
                         {
-                            RunLogger.LogResultError("The unity process has exited, but a log failure message was detected, flagging run as failed.");
+                            RunLogger.LogResultError("The process has exited, but a log failure message was detected, flagging run as failed.");
                             return ProcessResult.FailedRun;
                         }
                         var writer = new StringWriter();
-                        writer.WriteLine($"The unity process has exited, but did not print the proper cleanup, did it crash? Marking as failed. The last {LinesToSave} lines of the log was:");
-                        foreach(var entry in _lastLines)
-                        {
-                            writer.WriteLine($"  {entry}");
-                        }
+                        writer.WriteLine($"The process has exited, but did not print the proper cleanup, did it crash? Marking as failed. TODO ADD MORE INFO");
                         RunLogger.LogResultError(writer.ToString());
                         return ProcessResult.FailedRun;
                     }
                 }
             }
 
-        }
-
-        private static void StashLine(string line)
-        {
-            if (_lastLines.Count >= LinesToSave)
-                _lastLines.Dequeue();
-            _lastLines.Enqueue(line);
         }
 
         private static bool IsExitMessage(IEnumerable<string> readLines)
@@ -164,24 +133,12 @@ namespace UnityLauncher.Editor
 
         private static bool IsExitMessage(string line)
         {
-            if (line == "Cleanup mono")
-                return true;
-            if (line == "Exiting batchmode successfully now!")
-                return true;
             return false;
         }
 
         private static bool IsFailureMessage(string line)
         {
-            if (line == "Error building Player because scripts had compiler errors")
-                return true;
-            if (line == "Failed to build player.")
-                return true;
-            if (line == "Aborting batchmode due to failure:")
-                return true;
-            if (line == "Failed to build player.")
-                return true;
-            if (line == "No tests were executed")
+            if (line == "A crash has been intercepted by the crash handler. For call stack and other details, see the latest crash report generated in:")
                 return true;
             return false;
         }

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace UnityLogWrapper
+namespace UnityLauncher.Core
 {
     public static class RunLogger
     {

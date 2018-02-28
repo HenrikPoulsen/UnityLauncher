@@ -2,8 +2,9 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Xml;
+using UnityLauncher.Core;
 
-namespace UnityLogWrapper
+namespace UnityLauncher.Editor
 {
     class CheckTestResults
     {
@@ -27,7 +28,7 @@ namespace UnityLogWrapper
         private static List<FailedTest> Failures;
         private static readonly TestSummary Summary = new TestSummary();
 
-        public static UnityLauncher.RunResult Parse(string resultFileName)
+        public static RunResult Parse(string resultFileName)
         {
             Failures = new List<FailedTest>();
 
@@ -52,10 +53,10 @@ namespace UnityLogWrapper
             catch (Exception ex)
             {
                 RunLogger.LogResultError($"Failed to parse {resultFileName}:\n{ex.Message}");
-                return UnityLauncher.RunResult.FailedToStart;
+                return RunResult.FailedToStart;
             }
 
-            var result = UnityLauncher.RunResult.Success;
+            var result = RunResult.Success;
             if (Failures.Count > 0)
             {
                 RunLogger.LogError("Test failures found:");
@@ -65,7 +66,7 @@ namespace UnityLogWrapper
                     RunLogger.LogError($"  {(i + 1)}: {Failures[i].Name}\n  {Failures[i].Message}\n  {Failures[i].StackTrace}\n\n");
                 }
 
-                result = UnityLauncher.RunResult.Failure;
+                result = RunResult.Failure;
             }
             
             RunLogger.LogResultInfo("Test results:");
@@ -88,7 +89,7 @@ namespace UnityLogWrapper
             if (Summary.Total != actualCount)
             {
                 RunLogger.LogResultError($"Test result sums don't match. Total was reported as {Summary.Total} but the numbers add up to {actualCount}");
-                result = UnityLauncher.RunResult.Failure;
+                result = RunResult.Failure;
             }
 
             return result;

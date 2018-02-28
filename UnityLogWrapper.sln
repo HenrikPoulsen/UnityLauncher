@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityPlayerLauncher", "Unit
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityEditorLauncher", "UnityEditorLauncher\UnityEditorLauncher.csproj", "{C519E310-0677-4271-BA78-93081B61DAE5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnityLauncher.Core", "UnityLauncher.Core\UnityLauncher.Core.csproj", "{7417AE0F-8182-41E7-93E3-C539B258764B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{C519E310-0677-4271-BA78-93081B61DAE5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C519E310-0677-4271-BA78-93081B61DAE5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C519E310-0677-4271-BA78-93081B61DAE5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7417AE0F-8182-41E7-93E3-C539B258764B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7417AE0F-8182-41E7-93E3-C539B258764B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7417AE0F-8182-41E7-93E3-C539B258764B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7417AE0F-8182-41E7-93E3-C539B258764B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
