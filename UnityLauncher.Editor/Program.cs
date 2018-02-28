@@ -48,6 +48,7 @@ namespace UnityLauncher.Editor
         public static int? ExecutionTimeout;
         public static string UnityExecutable { get; set; } = string.Empty;
         public static string LogFile { get; set; } = string.Empty;
+        static string SceneOverride;
         static int Main(string[] args)
         {
             var options = new OptionSet
@@ -141,6 +142,11 @@ namespace UnityLauncher.Editor
                     "timeoutIgnore",
                     "Indicates that if the exeuction times out it should not flag it as a failure if everything else is ok",
                     v => Flags |= Flag.TimeoutIgnore
+                },
+                {
+                    "scene=",
+                    "Modifies the scene list to build with only the scene listed here. Needs to be the relative path to the file from the project path",
+                    v => SceneOverride = v
                 }
                 
             };
@@ -268,6 +274,7 @@ namespace UnityLauncher.Editor
             stopwatch.Start();
             var runResult = UnityLauncher.Run(sb.ToString());
             RunLogger.LogResultInfo($"Command execution took: {stopwatch.Elapsed}");
+            RestoreProjectSettings(ProjectPath);
             if (runResult == RunResult.FailedToStart)
                 return -1;
             if (!LogParser.Parse())
@@ -299,24 +306,97 @@ namespace UnityLauncher.Editor
             RunLogger.Dump();
             return 0;
         }
+        
+        static List<string> ProjectSettingsOriginal;
+        static List<string> EditorBuildSettingsOriginal;
 
         static int UpdateProjectSettings(string projectPath)
         {
-            var filePath = $"{projectPath}/ProjectSettings/ProjectSettings.asset";
-            if (!File.Exists(filePath))
+            var projectSettingsAssetPath = $"{projectPath}/ProjectSettings/ProjectSettings.asset";
+            var editorBuildSettingsPath = $"{projectPath}/ProjectSettings/EditorBuildSettings.asset";
+            if (!File.Exists(projectSettingsAssetPath))
             {
-                RunLogger.LogError($"Could not find {filePath} to set scriptingBackend in");
+                RunLogger.LogError($"Could not find {projectSettingsAssetPath}");
                 return -1;
             }
+            if (!File.Exists(editorBuildSettingsPath))
+            {
+                RunLogger.LogError($"Could not find {editorBuildSettingsPath}");
+                return -1;
+            }
+
+            ProjectSettingsOriginal = File.ReadAllLines(projectSettingsAssetPath).ToList();
+            EditorBuildSettingsOriginal = File.ReadAllLines(editorBuildSettingsPath).ToList();
                 
-            var file = File.ReadAllLines(filePath).ToList();
+            var projectSettingsAsset = File.ReadAllLines(projectSettingsAssetPath).ToList();
+            var editorBuildSettings = File.ReadAllLines(editorBuildSettingsPath).ToList();
 
-            UpdateScriptingBackend(ref file);
-            UpdateResolutionDialog(ref file);
+            UpdateScriptingBackend(ref projectSettingsAsset);
+            UpdateResolutionDialog(ref projectSettingsAsset);
+            UpdateScene(ref editorBuildSettings);           
+            
+            File.WriteAllLines(projectSettingsAssetPath, projectSettingsAsset);
+            File.WriteAllLines(editorBuildSettingsPath, editorBuildSettings);
+            return 0;
+        }
 
-            
-            
-            File.WriteAllLines(filePath, file);
+        static void RestoreProjectSettings(string projectPath)
+        {
+            var projectSettingsAssetPath = $"{projectPath}/ProjectSettings/ProjectSettings.asset";
+            var editorBuildSettingsPath = $"{projectPath}/ProjectSettings/EditorBuildSettings.asset";
+            File.WriteAllLines(projectSettingsAssetPath, ProjectSettingsOriginal);
+            File.WriteAllLines(editorBuildSettingsPath, EditorBuildSettingsOriginal);
+        }
+
+        static int UpdateScene(ref List<string> file)
+        {
+            if (string.IsNullOrEmpty(SceneOverride))
+                return -1;
+
+            if (!File.Exists($"{ProjectPath}/{SceneOverride}"))
+            {
+                RunLogger.LogResultError($"Failed to find {ProjectPath}/{SceneOverride}");
+            }
+
+            var sceneMetaFile = File.ReadAllLines($"{ProjectPath}/{SceneOverride}.meta");
+            string sceneGuid = null;
+
+            foreach (var line in sceneMetaFile)
+            {
+                if (!line.StartsWith("guid:"))
+                    continue;
+                sceneGuid = line.Substring(6);
+                break;
+            }
+
+            var sectionFound = false;
+            for(var i = 0; i < file.Count; i++)
+            {
+                var line = file[i];
+                var trimmed = line.Trim();
+                if(!sectionFound)
+                {
+                    if (trimmed.StartsWith("m_Scenes:"))
+                    {
+                        sectionFound = true;
+                        file.Insert(++i, $"  - enabled: 1");
+                        file.Insert(++i, $"    path: {SceneOverride}");
+                        file.Insert(++i, $"    guid: {sceneGuid}");
+                    }
+                    continue;
+                }
+
+                if (trimmed.StartsWith("- enabled") || trimmed.StartsWith("guid:") || trimmed.StartsWith("path:"))
+                {
+                    file.RemoveAt(i);
+                    i--;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
             return 0;
         }
 
@@ -335,6 +415,8 @@ namespace UnityLauncher.Editor
                 break;
             }
         }
+        
+        
 
         static void UpdateScriptingBackend(ref List<string> file)
         {
