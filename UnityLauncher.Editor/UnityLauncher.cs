@@ -189,6 +189,8 @@ namespace UnityLauncher.Editor
                     return true;
                 case "No tests were executed":
                     return true;
+                case "Unhandled Exception: System.InvalidOperationException: C++ code builder is unable to build C++ code. In order to build C++ code for Windows Desktop, you must have one of these installed:":
+                    return true;
             }
 
             if (line.StartsWith("DirectoryNotFoundException: Could not find a part of the path"))
