@@ -101,11 +101,11 @@ namespace UnityLauncher.Editor
                     {
                         if ((Program.Flags & Program.Flag.TimeoutIgnore) != Program.Flag.None)
                         {
-                            RunLogger.LogResultInfo($"Execution timed out after {Program.ExecutionTimeout.Value * 1000} seconds");
+                            RunLogger.LogResultInfo($"Execution timed out after {Program.ExecutionTimeout.Value} seconds");
                         }
                         else
                         {
-                            RunLogger.LogResultError($"Execution timed out after {Program.ExecutionTimeout.Value * 1000} seconds. Failing run");
+                            RunLogger.LogResultError($"Execution timed out after {Program.ExecutionTimeout.Value} seconds. Failing run");
                         }
 
                         process.Kill();
