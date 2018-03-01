@@ -164,24 +164,32 @@ namespace UnityLauncher.Editor
 
         private static bool IsExitMessage(string line)
         {
-            if (line == "Cleanup mono")
-                return true;
-            if (line == "Exiting batchmode successfully now!")
-                return true;
+            switch (line)
+            {
+                case "Cleanup mono":
+                    return true;
+                case "Exiting batchmode successfully now!":
+                    return true;
+            }
+
             return false;
         }
 
         private static bool IsFailureMessage(string line)
         {
-            if (line == "Error building Player because scripts had compiler errors")
-                return true;
-            if (line == "Failed to build player.")
-                return true;
-            if (line == "Aborting batchmode due to failure:")
-                return true;
-            if (line == "Failed to build player.")
-                return true;
-            if (line == "No tests were executed")
+            switch (line)
+            {
+                case "Error building Player because scripts had compiler errors":
+                    return true;
+                case "Failed to build player.":
+                    return true;
+                case "Aborting batchmode due to failure:":
+                    return true;
+                case "No tests were executed":
+                    return true;
+            }
+
+            if (line.StartsWith("DirectoryNotFoundException: Could not find a part of the path"))
                 return true;
             return false;
         }
