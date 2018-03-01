@@ -49,6 +49,7 @@ namespace UnityLauncher.Editor
         public static string UnityExecutable { get; set; } = string.Empty;
         public static string LogFile { get; set; } = string.Empty;
         static string SceneOverride;
+        private static string ExpectedBuildArtifact;
         static int Main(string[] args)
         {
             var options = new OptionSet
@@ -256,18 +257,21 @@ namespace UnityLauncher.Editor
             {
                 RunLogger.LogInfo("buildWindows64Player is set");
                 sb.Append($"-buildWindows64Player {buildWindows64Player} ");
+                ExpectedBuildArtifact = $"{ProjectPath}/{buildWindows64Player}";
             }
 
             if (!string.IsNullOrEmpty(buildLinuxUniversalPlayer))
             {
                 RunLogger.LogInfo("buildLinuxUniversalPlayer is set");
                 sb.Append($"-buildLinuxUniversalPlayer {buildLinuxUniversalPlayer} ");
+                ExpectedBuildArtifact = $"{ProjectPath}/{buildLinuxUniversalPlayer}";
             }
 
             if (!string.IsNullOrEmpty(buildOSXUniversalPlayer))
             {
                 RunLogger.LogInfo("buildOSXUniversalPlayer is set");
                 sb.Append($"-buildOSXUniversalPlayer {buildOSXUniversalPlayer} ");
+                ExpectedBuildArtifact = $"{ProjectPath}/{buildOSXUniversalPlayer}";
             }
 
             var stopwatch = new Stopwatch();
@@ -298,6 +302,13 @@ namespace UnityLauncher.Editor
             if (runResult != RunResult.Success)
             {
                 RunLogger.LogResultError("Run has failed");
+                RunLogger.Dump();
+                return -1;
+            }
+
+            if (!string.IsNullOrEmpty(ExpectedBuildArtifact) && !(File.Exists(ExpectedBuildArtifact) || Directory.Exists(ExpectedBuildArtifact)))
+            {
+                RunLogger.LogResultError($"Expected to find {ExpectedBuildArtifact} after the execution but it is missing. Check the log for what could have gone wrong");
                 RunLogger.Dump();
                 return -1;
             }
@@ -360,7 +371,7 @@ namespace UnityLauncher.Editor
                 return -1;
             }
             
-            RunLogger.LogInfo($"Setting m_Scenes in EditorBuildSettings.asset to {DisplayResolutionDialogOverride}");
+            RunLogger.LogInfo($"Setting m_Scenes in EditorBuildSettings.asset to {SceneOverride}");
 
             var sceneMetaFile = File.ReadAllLines($"{ProjectPath}/{SceneOverride}.meta");
             string sceneGuid = null;
@@ -428,7 +439,7 @@ namespace UnityLauncher.Editor
             if (ScriptingBackendOverride == ScriptingBackend.current)
                 return;
             
-            RunLogger.LogInfo($"Setting scriptingBackend in ProjectSettings.asset to {DisplayResolutionDialogOverride}");
+            RunLogger.LogInfo($"Setting scriptingBackend in ProjectSettings.asset to {ScriptingBackendOverride}");
             
             var foundSection = false;
             for(var i = 0; i < file.Count; i++)
