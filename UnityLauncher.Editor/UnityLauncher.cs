@@ -127,6 +127,9 @@ namespace UnityLauncher.Editor
                                 failureMessagePrinted = true;
                             if (!IsExitMessage(line))
                                 continue;
+
+                            if (failureMessagePrinted)
+                                continue;
                             RunLogger.LogInfo("Unity has exited cleanly.");
                             return ProcessResult.UseExitCode;
                         }
