@@ -177,6 +177,8 @@ namespace UnityLauncher.Editor
 
         private static bool IsFailureMessage(string line)
         {
+            if (string.IsNullOrEmpty(line))
+                return false;
             switch (line)
             {
                 case "Error building Player because scripts had compiler errors":
