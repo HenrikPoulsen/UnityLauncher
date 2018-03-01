@@ -342,6 +342,7 @@ namespace UnityLauncher.Editor
 
         static void RestoreProjectSettings(string projectPath)
         {
+            RunLogger.LogInfo($"Restoring settings in ProjectSettings.asset and EditorBuildSettings.asset to how they were");
             var projectSettingsAssetPath = $"{projectPath}/ProjectSettings/ProjectSettings.asset";
             var editorBuildSettingsPath = $"{projectPath}/ProjectSettings/EditorBuildSettings.asset";
             File.WriteAllLines(projectSettingsAssetPath, ProjectSettingsOriginal);
@@ -356,7 +357,10 @@ namespace UnityLauncher.Editor
             if (!File.Exists($"{ProjectPath}/{SceneOverride}"))
             {
                 RunLogger.LogResultError($"Failed to find {ProjectPath}/{SceneOverride}");
+                return -1;
             }
+            
+            RunLogger.LogInfo($"Setting m_Scenes in EditorBuildSettings.asset to {DisplayResolutionDialogOverride}");
 
             var sceneMetaFile = File.ReadAllLines($"{ProjectPath}/{SceneOverride}.meta");
             string sceneGuid = null;
@@ -404,6 +408,7 @@ namespace UnityLauncher.Editor
         {
             if (DisplayResolutionDialogOverride == DisplayResolutionDialog.current)
                 return;
+            RunLogger.LogInfo($"Setting displayResolutionDialog in ProjectSettings.asset to {DisplayResolutionDialogOverride}");
             for(var i = 0; i < file.Count; i++)
             {
                 var line = file[i];
@@ -422,6 +427,8 @@ namespace UnityLauncher.Editor
         {
             if (ScriptingBackendOverride == ScriptingBackend.current)
                 return;
+            
+            RunLogger.LogInfo($"Setting scriptingBackend in ProjectSettings.asset to {DisplayResolutionDialogOverride}");
             
             var foundSection = false;
             for(var i = 0; i < file.Count; i++)
