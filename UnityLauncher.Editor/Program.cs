@@ -16,16 +16,15 @@ namespace UnityLauncher.Editor
         [Flags]
         public enum Flag
         {
-            None = 0,
-            Batchmode               = 1 << 0,
-            Quit                    = 1 << 1,
-            NoGraphics              = 1 << 2,
-            SilentCrashes           = 1 << 3,
-            WarningsAsErrors        = 1 << 4,
-            RunTests                = 1 << 5,
-            Automated               = 1 << 6,
-            TimeoutIgnore           = 1 << 7,
-            CleanedLogFileIgnore    = 1 << 8,
+            None                          = 0,
+            Batchmode                     = 1 << 0,
+            Quit                          = 1 << 1,
+            NoGraphics                    = 1 << 2,
+            SilentCrashes                 = 1 << 3,
+            WarningsAsErrors              = 1 << 4,
+            RunTests                      = 1 << 5,
+            Automated                     = 1 << 6,
+            TimeoutIgnore                 = 1 << 7,
         }
 
         public enum ScriptingBackend
@@ -110,11 +109,6 @@ namespace UnityLauncher.Editor
                     "cleanedLogFile=",
                     "Logs file that should only contain important messages (warnings, errors, assertions). If this is set and the specified file is not empty after the run the run will be flagged as failed.",
                     v => CleanedLogFile = v
-                },
-                {
-                    "ignoreCleanedLogFile",
-                    "If this is set the run will not fail if the cleanedLogFile is not empty",
-                    v => Flags |= Flag.CleanedLogFileIgnore
                 },
                 {
                     "testresults=",
@@ -317,7 +311,7 @@ namespace UnityLauncher.Editor
             }
 
      
-             runResult = CheckCleanedLogFile(runResult);
+             runResult = ParsedCleanedLogFileForErrors(runResult);
 
             if (runResult != RunResult.Success)
             {
@@ -338,7 +332,7 @@ namespace UnityLauncher.Editor
             return 0;
         }
 
-        static RunResult CheckCleanedLogFile(RunResult runResult)
+        static RunResult ParsedCleanedLogFileForErrors(RunResult runResult)
         {
             if (string.IsNullOrEmpty(CleanedLogFile))
                 return runResult;
@@ -349,22 +343,30 @@ namespace UnityLauncher.Editor
             if (content.Length == 0)
                 return runResult;
             var printedIndex = 0;
-            var fatal = (Flags & Flag.CleanedLogFileIgnore) == Flag.None;
-            if(fatal)
-                RunLogger.LogError("Cleaned output file is not empty. Here are the first 10 lines of content:");
-            else
-                RunLogger.LogInfo("Cleaned output file is not empty. Here are the first 10 lines of content:");
+            
+            var errors = new List<string>();
             foreach (var line in content)
             {
-                if(fatal)
-                    RunLogger.LogError(line);
-                else
-                    RunLogger.LogInfo(line);
-                if (++printedIndex >= 20)
+                if (!line.StartsWith("Assertion Failed:") && !line.Contains("(Error: "))
+                    continue;
+                
+                errors.Add(line);
+                if (errors.Count >= 10)
                     break;
             }
 
-            return fatal ? RunResult.Failure : runResult;
+            if (!errors.Any())
+                return runResult;
+            
+            RunLogger.LogResultError($"{CleanedLogFile} contains errors and/or assertions. Failing run");
+            RunLogger.LogError("Cleaned output file is not empty. Here are the first 10 errors and assertions:");
+
+            foreach (var error in errors)
+            {
+               RunLogger.LogError(error);
+            }
+
+            return RunResult.Failure;
         }
 
         static List<string> ProjectSettingsOriginal;
