@@ -17,14 +17,15 @@ namespace UnityLauncher.Editor
         public enum Flag
         {
             None = 0,
-            Batchmode        = 1 << 0,
-            Quit             = 1 << 1,
-            NoGraphics       = 1 << 2,
-            SilentCrashes    = 1 << 3,
-            WarningsAsErrors = 1 << 4,
-            RunTests         = 1 << 5,
-            Automated        = 1 << 6,
-            TimeoutIgnore    = 1 << 7,
+            Batchmode               = 1 << 0,
+            Quit                    = 1 << 1,
+            NoGraphics              = 1 << 2,
+            SilentCrashes           = 1 << 3,
+            WarningsAsErrors        = 1 << 4,
+            RunTests                = 1 << 5,
+            Automated               = 1 << 6,
+            TimeoutIgnore           = 1 << 7,
+            CleanedLogFileIgnore    = 1 << 8,
         }
 
         public enum ScriptingBackend
@@ -48,6 +49,7 @@ namespace UnityLauncher.Editor
         public static int? ExecutionTimeout;
         public static string UnityExecutable { get; set; } = string.Empty;
         public static string LogFile { get; set; } = string.Empty;
+        public static string CleanedLogFile { get; set; } = string.Empty;
         static string SceneOverride;
         private static string ExpectedBuildArtifact;
         static int Main(string[] args)
@@ -103,6 +105,16 @@ namespace UnityLauncher.Editor
                     "logfile=",
                     "Specify where the Editor or Windows/Linux/OSX standalone log file are written.",
                     v => LogFile = v
+                },
+                {
+                    "cleanedLogFile=",
+                    "Logs file that should only contain important messages (warnings, errors, assertions). If this is set and the specified file is not empty after the run the run will be flagged as failed.",
+                    v => CleanedLogFile = v
+                },
+                {
+                    "ignoreCleanedLogFile",
+                    "If this is set the run will not fail if the cleanedLogFile is not empty",
+                    v => Flags |= Flag.CleanedLogFileIgnore
                 },
                 {
                     "testresults=",
@@ -187,6 +199,11 @@ namespace UnityLauncher.Editor
 
             sb.Append($"-logFile \"{Path.GetFullPath(LogFile)}\" ");
             sb.Append($"-projectPath \"{Path.GetFullPath(ProjectPath)}\" ");
+            
+            if (!string.IsNullOrEmpty(CleanedLogFile))
+            {
+                sb.Append($"-cleanedLogFile \"{Path.GetFullPath(CleanedLogFile)}\" ");
+            }
             
             
             if ((Flags & Flag.Batchmode) != Flag.None)
@@ -299,6 +316,9 @@ namespace UnityLauncher.Editor
                 }
             }
 
+     
+             runResult = CheckCleanedLogFile(runResult);
+
             if (runResult != RunResult.Success)
             {
                 RunLogger.LogResultError("Run has failed");
@@ -317,7 +337,36 @@ namespace UnityLauncher.Editor
             RunLogger.Dump();
             return 0;
         }
-        
+
+        static RunResult CheckCleanedLogFile(RunResult runResult)
+        {
+            if (string.IsNullOrEmpty(CleanedLogFile))
+                return runResult;
+            if (!File.Exists(CleanedLogFile))
+                return runResult;
+
+            var content = File.ReadAllLines(CleanedLogFile);
+            if (content.Length == 0)
+                return runResult;
+            var printedIndex = 0;
+            var fatal = (Flags & Flag.CleanedLogFileIgnore) == Flag.None;
+            if(fatal)
+                RunLogger.LogError("Cleaned output file is not empty. Here are the first 10 lines of content:");
+            else
+                RunLogger.LogInfo("Cleaned output file is not empty. Here are the first 10 lines of content:");
+            foreach (var line in content)
+            {
+                if(fatal)
+                    RunLogger.LogError(line);
+                else
+                    RunLogger.LogInfo(line);
+                if (++printedIndex >= 20)
+                    break;
+            }
+
+            return fatal ? RunResult.Failure : runResult;
+        }
+
         static List<string> ProjectSettingsOriginal;
         static List<string> EditorBuildSettingsOriginal;
 
