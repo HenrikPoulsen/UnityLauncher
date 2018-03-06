@@ -102,19 +102,40 @@ namespace UnityLauncher.Player
             catch (OptionException e)
             {
                 RunLogger.LogError(e.Message);
+                RunLogger.Dump();
+                options.WriteOptionDescriptions(Console.Out);
                 throw;
             }
 
-            if (!IsValidPath("executable", Executable))
+            if (extra.Any())
+            {
+                RunLogger.LogError($"Unknown commands passed:\n {string.Join(", ", extra)}");
+                RunLogger.Dump();
+                options.WriteOptionDescriptions(Console.Out);
                 return -1;
+            }
+                
+
+            if (!IsValidPath("executable", Executable))
+            {
+                RunLogger.Dump();
+                options.WriteOptionDescriptions(Console.Out);
+                return -1;
+            }
             if (string.IsNullOrEmpty(LogFile))
             {
                 RunLogger.LogError("logfile must be set");
+                RunLogger.Dump();
+                options.WriteOptionDescriptions(Console.Out);
                 return -1;
             }
-            
-            if(!IsValidPath("logfile", new FileInfo(LogFile).Directory.FullName))
+
+            if (!IsValidPath("logfile", new FileInfo(LogFile).Directory.FullName))
+            {
+                RunLogger.Dump();
+                options.WriteOptionDescriptions(Console.Out);
                 return -1;
+            }
 
             var sb = new StringBuilder();
 

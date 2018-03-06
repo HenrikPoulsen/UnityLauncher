@@ -166,17 +166,28 @@ namespace UnityLauncher.Editor
             catch (OptionException e)
             {
                 RunLogger.LogError(e.Message);
+                RunLogger.Dump();
+                options.WriteOptionDescriptions(Console.Out);
                 throw;
+            }
+            if (extra.Any())
+            {
+                RunLogger.LogError($"Unknown commands passed:\n {string.Join(", ", extra)}");
+                RunLogger.Dump();
+                options.WriteOptionDescriptions(Console.Out);
+                return -1;
             }
 
             if (!IsValidPath("unityexecutable", UnityExecutable))
             {
                 RunLogger.Dump();
+                options.WriteOptionDescriptions(Console.Out);
                 return -1;
             }
             if (!IsValidPath("projectpath", ProjectPath))
             {
                 RunLogger.Dump();
+                options.WriteOptionDescriptions(Console.Out);
                 return -1;
             }
                 
@@ -184,6 +195,7 @@ namespace UnityLauncher.Editor
             {
                 RunLogger.LogError("logfile must be set");
                 RunLogger.Dump();
+                options.WriteOptionDescriptions(Console.Out);
                 return -1;
             }
 
