@@ -170,24 +170,37 @@ namespace UnityLauncher.Editor
             }
 
             if (!IsValidPath("unityexecutable", UnityExecutable))
+            {
+                RunLogger.Dump();
                 return -1;
+            }
             if (!IsValidPath("projectpath", ProjectPath))
+            {
+                RunLogger.Dump();
                 return -1;
+            }
+                
             if (string.IsNullOrEmpty(LogFile))
             {
                 RunLogger.LogError("logfile must be set");
+                RunLogger.Dump();
                 return -1;
             }
 
             var result = UpdateProjectSettings(ProjectPath);
             if (result != 0)
             {
+                RunLogger.Dump();
                 return -1;
             }
 
-            
-            if(!IsValidPath("logfile", new FileInfo(LogFile).Directory.FullName))
+
+            if (!IsValidPath("logfile", new FileInfo(LogFile).Directory.FullName))
+            {
+                RunLogger.Dump();
                 return -1;
+            }
+                
 
             var sb = new StringBuilder();
 
@@ -291,7 +304,11 @@ namespace UnityLauncher.Editor
             RunLogger.LogResultInfo($"Command execution took: {stopwatch.Elapsed}");
             RestoreProjectSettings(ProjectPath);
             if (runResult == RunResult.FailedToStart)
+            {
+                RunLogger.Dump();
                 return -1;
+            }
+                
             if (!LogParser.Parse())
                 runResult = RunResult.Failure;
 
@@ -393,9 +410,12 @@ namespace UnityLauncher.Editor
             var projectSettingsAsset = File.ReadAllLines(projectSettingsAssetPath).ToList();
             var editorBuildSettings = File.ReadAllLines(editorBuildSettingsPath).ToList();
 
-            UpdateScriptingBackend(ref projectSettingsAsset);
-            UpdateResolutionDialog(ref projectSettingsAsset);
-            UpdateScene(ref editorBuildSettings);           
+            if(!UpdateScriptingBackend(ref projectSettingsAsset))
+                return -1;
+            if (!UpdateResolutionDialog(ref projectSettingsAsset))
+                return -1;
+            if(!UpdateScene(ref editorBuildSettings))
+                return -1;
             
             File.WriteAllLines(projectSettingsAssetPath, projectSettingsAsset);
             File.WriteAllLines(editorBuildSettingsPath, editorBuildSettings);
@@ -411,15 +431,15 @@ namespace UnityLauncher.Editor
             File.WriteAllLines(editorBuildSettingsPath, EditorBuildSettingsOriginal);
         }
 
-        static int UpdateScene(ref List<string> file)
+        static bool UpdateScene(ref List<string> file)
         {
             if (string.IsNullOrEmpty(SceneOverride))
-                return -1;
+                return false;
 
             if (!File.Exists($"{ProjectPath}/{SceneOverride}"))
             {
                 RunLogger.LogResultError($"Failed to find {ProjectPath}/{SceneOverride}");
-                return -1;
+                return false;
             }
             
             RunLogger.LogInfo($"Setting m_Scenes in EditorBuildSettings.asset to {SceneOverride}");
@@ -463,13 +483,13 @@ namespace UnityLauncher.Editor
                 }
             }
 
-            return 0;
+            return true;
         }
 
-        static void UpdateResolutionDialog(ref List<string> file)
+        static bool UpdateResolutionDialog(ref List<string> file)
         {
             if (DisplayResolutionDialogOverride == DisplayResolutionDialog.current)
-                return;
+                return true;
             RunLogger.LogInfo($"Setting displayResolutionDialog in ProjectSettings.asset to {DisplayResolutionDialogOverride}");
             for(var i = 0; i < file.Count; i++)
             {
@@ -481,14 +501,16 @@ namespace UnityLauncher.Editor
                 file[i] = $"  displayResolutionDialog: {(int)DisplayResolutionDialogOverride}";
                 break;
             }
+
+            return true;
         }
         
         
 
-        static void UpdateScriptingBackend(ref List<string> file)
+        static bool UpdateScriptingBackend(ref List<string> file)
         {
             if (ScriptingBackendOverride == ScriptingBackend.current)
-                return;
+                return true;
             
             RunLogger.LogInfo($"Setting scriptingBackend in ProjectSettings.asset to {ScriptingBackendOverride}");
             
@@ -517,6 +539,8 @@ namespace UnityLauncher.Editor
                 file[i] = $"    Standalone: {(int)ScriptingBackendOverride}";
                 break;
             }
+
+            return true;
         }
 
         public static string TestResults { get; set; } = string.Empty;

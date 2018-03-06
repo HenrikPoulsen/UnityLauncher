@@ -191,12 +191,27 @@ namespace UnityLauncher.Player
             var content = File.ReadAllLines(CleanedLogFile);
             if (content.Length == 0)
                 return runResult;
-            var printedIndex = 0;
             
             var errors = new List<string>();
             foreach (var line in content)
             {
-                if (!line.StartsWith("Assertion Failed:") && !line.Contains("(Error: "))
+                var isError = false;
+                if (line.StartsWith("Assertion Failed:"))
+                    isError = true;
+                else if (line.StartsWith("The referenced script on this Behaviour"))
+                    isError = true;
+                else if (line.Contains("(Error: "))
+                    isError = true;
+                
+
+                if (!isError)
+                {
+                    var firstWord = line.Split(' ', 2)[0];
+                    if (firstWord.EndsWith("Exception:"))
+                        isError = true;
+                }
+
+                if (!isError)
                     continue;
                 
                 errors.Add(line);

@@ -136,7 +136,14 @@ namespace UnityLauncher.Player
 
         private static bool IsFailureMessage(string line)
         {
+            if (line == null)
+                return false;
             if (line == "A crash has been intercepted by the crash handler. For call stack and other details, see the latest crash report generated in:")
+                return true;
+            if (line.StartsWith("The referenced script on this Behaviour"))
+                return true;
+            var firstWord = line.Split(' ', 2)[0];
+            if (firstWord.EndsWith("Exception:"))
                 return true;
             return false;
         }
