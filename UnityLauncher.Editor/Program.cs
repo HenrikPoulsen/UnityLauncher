@@ -434,7 +434,7 @@ namespace UnityLauncher.Editor
         static bool UpdateScene(ref List<string> file)
         {
             if (string.IsNullOrEmpty(SceneOverride))
-                return false;
+                return true;
 
             if (!File.Exists($"{ProjectPath}/{SceneOverride}"))
             {
