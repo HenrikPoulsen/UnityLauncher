@@ -122,6 +122,12 @@ namespace UnityLauncher.Player
                 options.WriteOptionDescriptions(Console.Out);
                 return -1;
             }
+            if (Executable.EndsWith(".app"))
+            {
+                var fileName = Path.GetFileNameWithoutExtension(Executable);
+                Executable += $"/Contents/MacOS/{fileName}";
+            }
+            
             if (string.IsNullOrEmpty(LogFile))
             {
                 RunLogger.LogError("logfile must be set");
