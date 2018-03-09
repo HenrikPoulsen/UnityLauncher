@@ -79,7 +79,7 @@ namespace UnityLauncher.Editor
                     if (IsFailureMessage(line))
                     {
                         failureMessagePrinted = true;
-                        RunLogger.LogError(line);
+                        RunLogger.LogError($"Failure message in the log: {line}");
                     }
                         
                     if (IsExitMessage(line))
@@ -193,6 +193,10 @@ namespace UnityLauncher.Editor
                 case "No tests were executed":
                     return true;
                 case "Unhandled Exception: System.InvalidOperationException: C++ code builder is unable to build C++ code. In order to build C++ code for Windows Desktop, you must have one of these installed:":
+                    return true;
+                case "Fatal Error! It looks like another Unity instance is running with this project open.":
+                    return true;
+                case "Multiple Unity instances cannot open the same project.":
                     return true;
             }
 

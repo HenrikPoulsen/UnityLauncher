@@ -20,6 +20,7 @@ namespace UnityLauncher.Player
             Batchmode                  = 1 << 0,
             NoGraphics                 = 1 << 2,
             TimeoutIgnore              = 1 << 7,
+            EnforceEmptyCleanedLogFile     = 1 << 8
         }
 
         public enum ScriptingBackend
@@ -65,6 +66,11 @@ namespace UnityLauncher.Player
                     "cleanedLogFile=",
                     "Logs file that should only contain important messages (warnings, errors, assertions). If this is set and the specified file is not empty after the run the run will be flagged as failed.",
                     v => CleanedLogFile = v
+                },
+                {
+                    "enforceEmptyCleanedLogFile",
+                    "If this flag is set the run will fail if anything at all is logged to the cleanedLogFile which is useful if you know the player should never log if everything is running fine",
+                    v => Flags |= Flag.EnforceEmptyCleanedLogFile
                 },
                 {
                     "timeout=",
@@ -184,6 +190,11 @@ namespace UnityLauncher.Player
             {
                 sb.Append($"-screen-quality {ScreenQuality} ");
             }
+            
+            if ((Flags & Flag.EnforceEmptyCleanedLogFile) != Flag.None)
+            {
+                RunLogger.LogInfo("enforceEmptyCleanedLogFile has been set. Will fail run if cleanedLogFile contents is not empty after run");
+            }
 
             var stopwatch = new Stopwatch();
             stopwatch.Start();
@@ -213,37 +224,49 @@ namespace UnityLauncher.Player
             if (string.IsNullOrEmpty(CleanedLogFile))
                 return runResult;
             if (!File.Exists(CleanedLogFile))
-                return runResult;
+            {
+                RunLogger.LogResultError($"Was expecting to find {CleanedLogFile} but it was missing. Failing run.");
+                return RunResult.Failure;
+            }
+                
 
             var content = File.ReadAllLines(CleanedLogFile);
             if (content.Length == 0)
                 return runResult;
-            
+
             var errors = new List<string>();
-            foreach (var line in content)
+            if ((Flags & Flag.EnforceEmptyCleanedLogFile) != Flag.None)
             {
-                var isError = false;
-                if (line.StartsWith("Assertion Failed:"))
-                    isError = true;
-                else if (line.StartsWith("The referenced script on this Behaviour"))
-                    isError = true;
-                else if (line.Contains("(Error: "))
-                    isError = true;
-                
-
-                if (!isError)
+                RunLogger.LogError("enforceEmptyCleanedLogFile was set and cleanedLogFile is not empty. Will fail run.");
+                errors = content.ToList();
+            }
+            else
+            {
+                foreach (var line in content)
                 {
-                    var firstWord = line.Split(' ', 2)[0];
-                    if (firstWord.EndsWith("Exception:"))
+                    var isError = false;
+                    if (line.StartsWith("Assertion Failed:"))
                         isError = true;
-                }
-
-                if (!isError)
-                    continue;
+                    else if (line.StartsWith("The referenced script on this Behaviour"))
+                        isError = true;
+                    else if (line.Contains("(Error: "))
+                        isError = true;
                 
-                errors.Add(line);
-                if (errors.Count >= 10)
-                    break;
+
+                    if (!isError)
+                    {
+                        var firstWord = line.Split(' ', 2)[0];
+                        if (firstWord.EndsWith("Exception:"))
+                            isError = true;
+                    }
+
+                    if (!isError)
+                        continue;
+                
+                    errors.Add(line);
+                    if (errors.Count >= 10)
+                        break;
+                }
             }
 
             if (!errors.Any())
