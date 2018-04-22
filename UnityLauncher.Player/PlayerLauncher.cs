@@ -83,14 +83,14 @@ namespace UnityLauncher.Player
                         if ((Program.Flags & Program.Flag.TimeoutIgnore) != Program.Flag.None)
                         {
                             RunLogger.LogResultInfo($"Execution timed out after {Program.ExecutionTimeout.Value} seconds");
-                        }
-                        else
-                        {
-                            RunLogger.LogResultError($"Execution timed out after {Program.ExecutionTimeout.Value} seconds. Failing run");
+                            process.Kill();
+                            return ProcessResult.IgnoreExitCode;
                         }
 
+                        RunLogger.LogResultError($"Execution timed out after {Program.ExecutionTimeout.Value} seconds. Failing run");
+
                         process.Kill();
-                        return ProcessResult.IgnoreExitCode;
+                        return ProcessResult.FailedRun;
                     }
 
                     if (process.HasExited)
