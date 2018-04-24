@@ -51,6 +51,7 @@ namespace UnityLauncher.Editor
         public static string CleanedLogFile { get; set; } = string.Empty;
         static string SceneOverride;
         private static string ExpectedBuildArtifact;
+        private static List<string> ExtraArgs;
         static int Main(string[] args)
         {
             var options = new OptionSet
@@ -158,10 +159,9 @@ namespace UnityLauncher.Editor
                 
             };
 
-            List<string> extra;
             try
             {
-                extra = options.Parse(args);
+                ExtraArgs = options.Parse(args);
             }
             catch (OptionException e)
             {
@@ -170,12 +170,9 @@ namespace UnityLauncher.Editor
                 options.WriteOptionDescriptions(Console.Out);
                 throw;
             }
-            if (extra.Any())
+            if (ExtraArgs.Any())
             {
-                RunLogger.LogError($"Unknown commands passed:\n {string.Join(", ", extra)}");
-                RunLogger.Dump();
-                options.WriteOptionDescriptions(Console.Out);
-                return -1;
+                RunLogger.LogInfo($"Unknown commands passed. These will be passed a long to the process:\n {string.Join(" ", ExtraArgs)}");
             }
 
             if (!IsValidPath("unityexecutable", UnityExecutable))
@@ -223,7 +220,12 @@ namespace UnityLauncher.Editor
             {
                 sb.Append($"-cleanedLogFile \"{Path.GetFullPath(CleanedLogFile)}\" ");
             }
-            
+
+            if (ExtraArgs.Any())
+            {
+                sb.Append(string.Join(" ", ExtraArgs));
+                sb.Append(" ");
+            }
             
             if ((Flags & Flag.Batchmode) != Flag.None)
             {

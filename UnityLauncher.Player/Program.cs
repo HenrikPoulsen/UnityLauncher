@@ -38,6 +38,7 @@ namespace UnityLauncher.Player
         public static int? ScreenWidth;
         public static int? ScreenHeight;
         public static string ScreenQuality;
+        private static List<string> ExtraArgs;
         static int Main(string[] args)
         {
             var options = new OptionSet
@@ -100,10 +101,9 @@ namespace UnityLauncher.Player
                 
             };
 
-            List<string> extra;
             try
             {
-                extra = options.Parse(args);
+                ExtraArgs = options.Parse(args);
             }
             catch (OptionException e)
             {
@@ -113,14 +113,10 @@ namespace UnityLauncher.Player
                 throw;
             }
 
-            if (extra.Any())
+            if (ExtraArgs.Any())
             {
-                RunLogger.LogError($"Unknown commands passed:\n {string.Join(", ", extra)}");
-                RunLogger.Dump();
-                options.WriteOptionDescriptions(Console.Out);
-                return -1;
+                RunLogger.LogInfo($"Unknown commands passed. These will be passed a long to the process:\n {string.Join(" ", ExtraArgs)}");
             }
-                
 
             if (!IsValidPath("executable", Executable))
             {
@@ -156,6 +152,12 @@ namespace UnityLauncher.Player
             if (!string.IsNullOrEmpty(CleanedLogFile))
             {
                 sb.Append($"-cleanedLogFile \"{Path.GetFullPath(CleanedLogFile)}\" ");
+            }
+            
+            if (ExtraArgs.Any())
+            {
+                sb.Append(string.Join(" ", ExtraArgs));
+                sb.Append(" ");
             }
             
             if ((Flags & Flag.Batchmode) != Flag.None)
