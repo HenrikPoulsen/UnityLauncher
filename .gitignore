@@ -2,3 +2,8 @@
 bin/
 Debug/
 obj/
+*.zip
+*.user
+*.xml
+*.orig
+*.log
