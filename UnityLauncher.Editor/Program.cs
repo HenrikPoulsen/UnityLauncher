@@ -25,6 +25,7 @@ namespace UnityLauncher.Editor
             RunTests                      = 1 << 5,
             Automated                     = 1 << 6,
             TimeoutIgnore                 = 1 << 7,
+            IgnoreErrorsOnArtifactCreation= 1 << 8,
         }
 
         public enum ScriptingBackend
@@ -50,7 +51,7 @@ namespace UnityLauncher.Editor
         public static string LogFile { get; set; } = string.Empty;
         public static string CleanedLogFile { get; set; } = string.Empty;
         static string SceneOverride;
-        private static string ExpectedBuildArtifact;
+        public static string ExpectedBuildArtifact;
         private static List<string> ExtraArgs;
         static int Main(string[] args)
         {
@@ -80,6 +81,11 @@ namespace UnityLauncher.Editor
                     "silentcrashes",
                     "Don’t display a crash dialog.",
                     v => Flags |= Flag.SilentCrashes
+                },
+                {
+                    "ignoreErrorsOnArtifactCreation",
+                    "Workaround to a random compilation issue introduced in 2018.2+ on slower machines. In that you sometimes get random compilation errors but artifacts are still being produced. So this flag will ignore the errors if the testresults or standalone build artifacts has been generated.",
+                    v => Flags |= Flag.IgnoreErrorsOnArtifactCreation
                 },
                 {
                     "warningsaserrors",
@@ -255,6 +261,11 @@ namespace UnityLauncher.Editor
             {
                 RunLogger.LogInfo("timeoutIgnore is set");
                 
+            }
+
+            if ((Flags & Flag.IgnoreErrorsOnArtifactCreation) != Flag.None)
+            {
+                RunLogger.LogInfo("ignoreErrorsOnArtifactCreation is set");
             }
 
             if ((Flags & Flag.Automated) != Flag.None)

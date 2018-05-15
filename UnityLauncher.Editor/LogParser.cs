@@ -13,9 +13,30 @@ namespace UnityLauncher.Editor
         private static readonly List<string> CompilerErrors = new List<string>();
         public static bool Parse()
         {
-            var success = true;
+            bool success;
 
             success = ParseLogFile();
+            if ((Program.Flags & Program.Flag.IgnoreErrorsOnArtifactCreation) != Program.Flag.None)
+            {
+                if (string.IsNullOrEmpty(Program.TestResults) && string.IsNullOrEmpty(Program.ExpectedBuildArtifact))
+                {
+                    // No test or build artifacts expected then we allow failure
+                }
+                else if (!string.IsNullOrEmpty(Program.TestResults) && !File.Exists(Program.TestResults))
+                {
+                    // No test results have been generated so we allow failure
+                }
+                else if (!string.IsNullOrEmpty(Program.ExpectedBuildArtifact) &&
+                         !Directory.Exists(Program.ExpectedBuildArtifact))
+                {
+                    // Build artifact path has been set but nothing has been created then we also allow failure
+                }
+                else
+                {
+                    //TODO: Temporary fix for random compilation issue. If flag is set we ignore whatever the parselogfile reports
+                    success = true;
+                }
+            }
             if (!ParseTestResults())
                 success = false;
             return success;
