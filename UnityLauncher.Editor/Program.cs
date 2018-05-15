@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text;
-using System.Threading;
 using NDesk.Options;
 using UnityLauncher.Core;
 
@@ -25,7 +23,7 @@ namespace UnityLauncher.Editor
             RunTests                      = 1 << 5,
             Automated                     = 1 << 6,
             TimeoutIgnore                 = 1 << 7,
-            IgnoreErrorsOnArtifactCreation= 1 << 8,
+            IgnoreErrorsOnArtifactCreation= 1 << 8
         }
 
         public enum ScriptingBackend
@@ -38,7 +36,7 @@ namespace UnityLauncher.Editor
         {
             current = -1,
             disabled = 0,
-            enabled = 1,
+            enabled = 1
         }
         public static Flag Flags = 0;
         public static ScriptingBackend ScriptingBackendOverride = ScriptingBackend.current;
@@ -337,6 +335,11 @@ namespace UnityLauncher.Editor
             if (!LogParser.Parse())
                 runResult = RunResult.Failure;
 
+            if (runResult != RunResult.Success && ShouldOverrideOverrideBuildFailure())
+            {
+                runResult = RunResult.Success;
+            }
+
             if ((Flags & Flag.RunTests) != Flag.None)
             {
                 if (File.Exists(TestResults))
@@ -372,6 +375,36 @@ namespace UnityLauncher.Editor
             RunLogger.LogResultInfo("Everything looks good. Run has passed");
             RunLogger.Dump();
             return 0;
+        }
+
+        private static bool ShouldOverrideOverrideBuildFailure()
+        {
+            
+            if ((Flags & Flag.IgnoreErrorsOnArtifactCreation) == Flag.None)
+                return false;
+            
+            var success = false;
+            if (string.IsNullOrEmpty(TestResults) && string.IsNullOrEmpty(ExpectedBuildArtifact))
+            {
+                // No test or build artifacts expected then we allow failure
+            }
+            else if (!string.IsNullOrEmpty(TestResults) && !File.Exists(TestResults))
+            {
+                // No test results have been generated so we allow failure
+            }
+            else if (!string.IsNullOrEmpty(ExpectedBuildArtifact) &&
+                     !Directory.Exists(ExpectedBuildArtifact))
+            {
+                // Build artifact path has been set but nothing has been created then we also allow failure
+            }
+            else
+            {
+                //TODO: Temporary fix for random compilation issue. If flag is set we ignore whatever the parselogfile reports
+                RunLogger.LogResultInfo("Errors were found in the log file but these were ignored since the artifacts were still generated and -ignoreErrorsOnArtifactCreation has been set");
+                success = true;
+            }
+
+            return success;
         }
 
         static RunResult ParsedCleanedLogFileForErrors(RunResult runResult)
