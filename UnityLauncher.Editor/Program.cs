@@ -387,15 +387,19 @@ namespace UnityLauncher.Editor
             if (string.IsNullOrEmpty(TestResults) && string.IsNullOrEmpty(ExpectedBuildArtifact))
             {
                 // No test or build artifacts expected then we allow failure
+                RunLogger.LogInfo($"[{nameof(ShouldOverrideOverrideBuildFailure)}] No artifacts expected in command line");
             }
             else if (!string.IsNullOrEmpty(TestResults) && !File.Exists(TestResults))
             {
                 // No test results have been generated so we allow failure
+                RunLogger.LogInfo($"[{nameof(ShouldOverrideOverrideBuildFailure)}] No test results file has been generated");
             }
             else if (!string.IsNullOrEmpty(ExpectedBuildArtifact) &&
-                     !Directory.Exists(ExpectedBuildArtifact))
+                     !Directory.Exists(ExpectedBuildArtifact) &&
+                     !File.Exists(ExpectedBuildArtifact))
             {
                 // Build artifact path has been set but nothing has been created then we also allow failure
+                RunLogger.LogInfo($"[{nameof(ShouldOverrideOverrideBuildFailure)}] Build artifacts file/folder doesn't exist");
             }
             else
             {
