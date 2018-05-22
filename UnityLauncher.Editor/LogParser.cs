@@ -73,10 +73,17 @@ namespace UnityLauncher.Editor
             {
                 Console.Write("\n");
                 RunLogger.LogInfo("Found compiler warnings:");
-                foreach (var warning in CompilerWarnings)
+                var warningsToPrint = CompilerWarnings.Count > 30 ? 30 : CompilerWarnings.Count;
+                for (var i = 0; i < warningsToPrint; i++)
                 {
-                    RunLogger.LogWarning(warning);
+                    RunLogger.LogWarning(CompilerWarnings[i]);
                 }
+                
+                if (warningsToPrint < CompilerWarnings.Count)
+                {
+                    RunLogger.LogWarning($"Did not print all warnings. Stopped after {warningsToPrint}. There are {CompilerWarnings.Count - warningsToPrint} that have not been printed.");
+                }
+                
                 if ((Program.Flags & Program.Flag.WarningsAsErrors) != Program.Flag.None)
                 {
                     success = false;
@@ -88,9 +95,15 @@ namespace UnityLauncher.Editor
             {
                 Console.Write("\n");
                 RunLogger.LogError("Found compiler errors:");
-                foreach (var error in CompilerErrors)
+                var errorsToPrint = CompilerErrors.Count > 30 ? 30 : CompilerErrors.Count;
+                for (var i = 0; i < errorsToPrint; i++)
                 {
-                    RunLogger.LogError(error);
+                    RunLogger.LogError(CompilerErrors[i]);
+                }
+
+                if (errorsToPrint < CompilerErrors.Count)
+                {
+                    RunLogger.LogError($"Did not print all errors. Stopped after {errorsToPrint}. There are {CompilerErrors.Count - errorsToPrint} that have not been printed.");
                 }
                 success = false;
                 Console.Write("\n");
