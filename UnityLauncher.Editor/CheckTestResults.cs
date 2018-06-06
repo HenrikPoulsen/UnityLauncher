@@ -79,6 +79,7 @@ namespace UnityLauncher.Editor
             if (Summary.Total == 0)
             {
                 RunLogger.LogResultInfo("No tests were executed");
+                result = RunResult.Failure;
             }
 
             var actualCount = Summary.Passed +
