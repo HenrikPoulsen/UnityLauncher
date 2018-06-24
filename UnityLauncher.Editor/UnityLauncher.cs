@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -16,7 +17,6 @@ namespace UnityLauncher.Editor
         
         public static RunResult Run(string args)
         {
-            File.Delete(Program.LogFile);
             RunLogger.LogInfo($"Will now run:\n{Program.UnityExecutable} {args}");
             ProcessResult processResult;
             const int retryLimit = 10;
@@ -24,6 +24,8 @@ namespace UnityLauncher.Editor
             Process process;
             do
             {
+                DeletedLogFile();
+                
                 if (retryCount != 0)
                 {
                     RunLogger.LogWarning($"Previous run timed out. Trying again in 30 seconds. This is attempt {retryCount}/{retryLimit}");
@@ -78,6 +80,26 @@ namespace UnityLauncher.Editor
             return RunResult.Success;
         }
 
+        private static void DeletedLogFile()
+        {
+            var retryLimit = 10;
+            var retryCount = 0;
+            do
+            {
+                retryCount++;
+                try
+                {
+                    File.Delete(Program.LogFile);
+                }
+                catch (IOException)
+                {
+                    RunLogger.LogWarning($"Failed to delete logfile. Retrying in 10 seconds. Attempt {retryCount}/{retryLimit}");
+                    Thread.Sleep(10000);
+                }
+                
+            } while (retryCount < retryLimit && File.Exists(Program.LogFile));
+        }
+
         private static ProcessResult CheckForCleanupEntry(Process process)
         {
             var fs = new FileStream(Program.LogFile, FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
@@ -118,6 +140,14 @@ namespace UnityLauncher.Editor
                         Thread.Sleep(1000);
                         if (waitingForDeathCounter-- <= 0)
                         {
+                            if (timeoutMessagePrinted)
+                            {
+                                // Hopefully temporary hack to work around potential packman timeout issues.
+                                // So if we detect a timeout error in the log then we may want to just retry the entire run
+                                RunLogger.LogError("Editor did not quit after 10 seconds, but was also timed out. Forcibly quitting and retrying");
+                                process.Kill();
+                                return ProcessResult.Timeout;
+                            }
                             RunLogger.LogInfo("Editor did not quit after 10 seconds. Forcibly quitting and whitelisting the exit code");
                             process.Kill();
                             return ProcessResult.IgnoreExitCode;
@@ -219,6 +249,8 @@ namespace UnityLauncher.Editor
             if (line.Contains("connect ETIMEDOUT"))
                 return true;
             if (line.Contains("Cannot connect to registry"))
+                return true;
+            if (line.Contains("Failed to resolve packages: failed to fetch from registry"))
                 return true;
             return false;
         }
