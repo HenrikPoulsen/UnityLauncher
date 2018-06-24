@@ -19,7 +19,7 @@ namespace UnityLauncher.Editor
         {
             RunLogger.LogInfo($"Will now run:\n{Program.UnityExecutable} {args}");
             ProcessResult processResult;
-            const int retryLimit = 10;
+            const int retryLimit = 50;
             var retryCount = 0;
             Process process;
             do
@@ -82,7 +82,7 @@ namespace UnityLauncher.Editor
 
         private static void DeletedLogFile()
         {
-            var retryLimit = 10;
+            var retryLimit = 50;
             var retryCount = 0;
             do
             {
@@ -170,6 +170,25 @@ namespace UnityLauncher.Editor
 
                     if (process.HasExited)
                     {
+                        while ((line = stream.ReadLine()) != null)
+                        {
+                            StashLine(line);
+                            if (IsTimeoutMessage(line))
+                            {
+                                timeoutMessagePrinted = true;
+                                RunLogger.LogError($"Timeout message in the log: {line}");
+                            }
+                            if (IsFailureMessage(line))
+                                failureMessagePrinted = true;
+                            if (!IsExitMessage(line))
+                                continue;
+
+                            if (failureMessagePrinted)
+                                continue;
+                            RunLogger.LogInfo("Unity has exited cleanly.");
+                            return ProcessResult.UseExitCode;
+                        }
+                        
                         if (timeoutMessagePrinted)
                         {
                             // Hopefully temporary hack to work around potential packman timeout issues.
@@ -183,19 +202,6 @@ namespace UnityLauncher.Editor
                             return ProcessResult.UseExitCode;
                         }
 
-                        while ((line = stream.ReadLine()) != null)
-                        {
-                            StashLine(line);
-                            if (IsFailureMessage(line))
-                                failureMessagePrinted = true;
-                            if (!IsExitMessage(line))
-                                continue;
-
-                            if (failureMessagePrinted)
-                                continue;
-                            RunLogger.LogInfo("Unity has exited cleanly.");
-                            return ProcessResult.UseExitCode;
-                        }
 
                         if (failureMessagePrinted)
                         {
@@ -250,7 +256,7 @@ namespace UnityLauncher.Editor
                 return true;
             if (line.Contains("Cannot connect to registry"))
                 return true;
-            if (line.Contains("Failed to resolve packages: failed to fetch from registry"))
+            if (line.Contains("failed to fetch from registry:"))
                 return true;
             return false;
         }
