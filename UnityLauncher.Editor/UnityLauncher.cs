@@ -18,23 +18,42 @@ namespace UnityLauncher.Editor
         {
             File.Delete(Program.LogFile);
             RunLogger.LogInfo($"Will now run:\n{Program.UnityExecutable} {args}");
-            var process = new Process()
+            ProcessResult processResult;
+            const int retryLimit = 10;
+            var retryCount = 0;
+            Process process;
+            do
             {
-                StartInfo = new ProcessStartInfo
+                if (retryCount != 0)
                 {
-                    FileName = Program.UnityExecutable,
-                    Arguments = args,
-                    RedirectStandardOutput = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
+                    RunLogger.LogWarning($"Previous run timed out. Trying again in 30 seconds. This is attempt {retryCount}/{retryLimit}");
+                    Thread.Sleep(30000);
                 }
-            };
+                process = new Process()
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = Program.UnityExecutable,
+                        Arguments = args,
+                        RedirectStandardOutput = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    }
+                };
 
-            var started = process.Start();
-            RunLogger.LogInfo($"Unity process spawned with pid: {process.Id}");
-            StreamReader fs;
-            var processResult = CheckForCleanupEntry(process);
-            process.WaitForExit();
+                var started = process.Start();
+                RunLogger.LogInfo($"Unity process spawned with pid: {process.Id}");
+                processResult = CheckForCleanupEntry(process);
+                process.WaitForExit();
+                retryCount++;
+            } while (processResult == ProcessResult.Timeout && retryCount < retryLimit);
+
+            if (processResult == ProcessResult.Timeout)
+            {
+                RunLogger.LogResultError("The run has timed out and exhausted the allowed retry count. Failing run");
+                return RunResult.Failure;
+            }
+            
             if (processResult == ProcessResult.FailedRun)
             {
                 RunLogger.LogInfo("CheckForCleanupEntry flagged a failed run. Aborting");
@@ -69,6 +88,7 @@ namespace UnityLauncher.Editor
                 var waitingForDeath = false;
                 var waitingForDeathCounter = 10;
                 var failureMessagePrinted = false;
+                var timeoutMessagePrinted = false;
                 while (true)
                 {
                     var line = stream.ReadLine();
@@ -80,6 +100,12 @@ namespace UnityLauncher.Editor
                     {
                         failureMessagePrinted = true;
                         RunLogger.LogError($"Failure message in the log: {line}");
+                    }
+                    
+                    if (IsTimeoutMessage(line))
+                    {
+                        timeoutMessagePrinted = true;
+                        RunLogger.LogError($"Timeout message in the log: {line}");
                     }
                         
                     if (IsExitMessage(line))
@@ -114,6 +140,13 @@ namespace UnityLauncher.Editor
 
                     if (process.HasExited)
                     {
+                        if (timeoutMessagePrinted)
+                        {
+                            // Hopefully temporary hack to work around potential packman timeout issues.
+                            // So if we detect a timeout error in the log then we may want to just retry the entire run
+                            RunLogger.LogError("The unity process has exited, but a timeout message was found, flagging run as timed out.");
+                            return ProcessResult.Timeout;
+                        }
                         if (waitingForDeath)
                         {
                             RunLogger.LogInfo("Unity has exited cleanly.");
@@ -175,6 +208,18 @@ namespace UnityLauncher.Editor
                     return true;
             }
 
+            return false;
+        }
+
+        private static bool IsTimeoutMessage(string line)
+        {
+            if (string.IsNullOrEmpty(line))
+                return false;
+            
+            if (line.Contains("connect ETIMEDOUT"))
+                return true;
+            if (line.Contains("Cannot connect to registry"))
+                return true;
             return false;
         }
 
