@@ -51,6 +51,7 @@ namespace UnityLauncher.Editor
         static string SceneOverride;
         public static string ExpectedBuildArtifact;
         private static List<string> ExtraArgs;
+        public static int ExpectedExitCode = 0;
         static int Main(string[] args)
         {
             var options = new OptionSet
@@ -99,6 +100,11 @@ namespace UnityLauncher.Editor
                     "unityexecutable=",
                     "Path to unity executable that should run this command",
                     v => UnityExecutable = v
+                },
+                {
+                    "expectedexitcode=",
+                    "If you for some reason don't expect to get exit code 0 from the run and want to enforce it",
+                    v => ExpectedExitCode = int.Parse(v)
                 },
                 {
                     "projectpath=",

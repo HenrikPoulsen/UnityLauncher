@@ -50,6 +50,7 @@ namespace UnityLauncher.Editor
                 retryCount++;
             } while (processResult == ProcessResult.Timeout && retryCount < retryLimit);
 
+            RunLogger.LogInfo($"Exeuction Done! Exit code: {process.ExitCode}");
             if (processResult == ProcessResult.Timeout)
             {
                 RunLogger.LogResultError("The run has timed out and exhausted the allowed retry count. Failing run");
@@ -61,18 +62,17 @@ namespace UnityLauncher.Editor
                 RunLogger.LogInfo("CheckForCleanupEntry flagged a failed run. Aborting");
                 return RunResult.Failure;
             }
-            RunLogger.LogInfo($"Exeuction Done! Exit code: {process.ExitCode}");
 
 
-            if (process.ExitCode != 0)
+            if (process.ExitCode != Program.ExpectedExitCode)
             {
                 if (processResult == ProcessResult.IgnoreExitCode)
                 {
-                    RunLogger.LogInfo("Exit code not 0, but this was expected in this case. Ignoring it");
+                    RunLogger.LogInfo($"Exit code not {Program.ExpectedExitCode}, but this was expected in this case. Ignoring it");
                 }
                 else
                 {
-                    RunLogger.LogError("Exit code not 0, run failed.");
+                    RunLogger.LogError($"Exit code not {Program.ExpectedExitCode}, run failed.");
                     return RunResult.Failure;    
                 }                  
             

@@ -30,23 +30,23 @@ namespace UnityLauncher.Player
             StreamReader fs;
             var processResult = CheckForCleanupEntry(process);
             process.WaitForExit();
+            
+            RunLogger.LogInfo($"Exeuction Done! Exit code: {process.ExitCode}");
             if (processResult == ProcessResult.FailedRun)
             {
                 RunLogger.LogInfo("CheckForCleanupEntry flagged a failed run. Aborting");
                 return RunResult.Failure;
             }
-            RunLogger.LogInfo($"Exeuction Done! Exit code: {process.ExitCode}");
 
-
-            if (process.ExitCode != 0)
+            if (process.ExitCode != Program.ExpectedExitCode)
             {
                 if (processResult == ProcessResult.IgnoreExitCode)
                 {
-                    RunLogger.LogInfo("Exit code not 0, but this was expected in this case. Ignoring it");
+                    RunLogger.LogInfo($"Exit code not {Program.ExpectedExitCode}, but this was expected in this case. Ignoring it");
                 }
                 else
                 {
-                    RunLogger.LogError("Exit code not 0, run failed.");
+                    RunLogger.LogError($"Exit code not {Program.ExpectedExitCode}, run failed.");
                     return RunResult.Failure;    
                 }                  
             

@@ -38,6 +38,7 @@ namespace UnityLauncher.Player
         public static int? ScreenWidth;
         public static int? ScreenHeight;
         public static string ScreenQuality;
+        public static int ExpectedExitCode = 0;
         private static List<string> ExtraArgs;
         static int Main(string[] args)
         {
@@ -57,6 +58,11 @@ namespace UnityLauncher.Player
                     "executable=",
                     "Path to unity executable that should run this command",
                     v => Executable = v
+                },
+                {
+                    "expectedexitcode=",
+                    "If you for some reason don't expect to get exit code 0 from the run and want to enforce it",
+                    v => ExpectedExitCode = int.Parse(v)
                 },
                 {
                     "logfile=",
