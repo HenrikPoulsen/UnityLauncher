@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using NDesk.Options;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using UnityLauncher.Core;
 
 namespace UnityLauncher.Editor
@@ -52,6 +54,7 @@ namespace UnityLauncher.Editor
         public static string ExpectedBuildArtifact;
         private static List<string> ExtraArgs;
         public static int ExpectedExitCode = 0;
+        public static string RegistryOverride = null;
         static int Main(string[] args)
         {
             var options = new OptionSet
@@ -147,6 +150,11 @@ namespace UnityLauncher.Editor
                     v => buildOSXUniversalPlayer = v
                 },
                 {
+                    "registryoverride=",
+                    "If you for some reason need to use a custom npm registry than the one in the manifest.json (maybe you have a fast one for your build system). Empty string removes the field",
+                    v => RegistryOverride = v
+                },
+                {
                     "buildWindows64Player=",
                     "Build a 64-bit standalone Windows player (for example, -buildWindows64Player path/to/your/build.exe).",
                     v => buildWindows64Player = v
@@ -207,6 +215,13 @@ namespace UnityLauncher.Editor
             }
 
             var result = UpdateProjectSettings(ProjectPath);
+            if (result != 0)
+            {
+                RunLogger.Dump();
+                return -1;
+            }
+            
+            result = UpdateManifest(ProjectPath);
             if (result != 0)
             {
                 RunLogger.Dump();
@@ -454,6 +469,26 @@ namespace UnityLauncher.Editor
             return RunResult.Failure;
         }
 
+        private static int UpdateManifest(string projectPath)
+        {
+            if (RegistryOverride == null)
+                return 0;
+            RunLogger.LogInfo($"Overriding registry in manifest to be {RegistryOverride}");
+            var manifestPath = $"{projectPath}/Packages/manifest.json";
+            if (!File.Exists(manifestPath))
+            {
+                RunLogger.LogError($"Could not find {manifestPath}");
+                return -1;
+            }
+            var manifest = JObject.Parse(File.ReadAllText(manifestPath));
+            if (RegistryOverride == "" && manifest.ContainsKey("registry"))
+                manifest.Remove("registry");
+            else
+                manifest["registry"] = RegistryOverride;
+            File.WriteAllText(manifestPath, manifest.ToString());
+            return 0;
+        }
+        
         static List<string> ProjectSettingsOriginal;
         static List<string> EditorBuildSettingsOriginal;
 
