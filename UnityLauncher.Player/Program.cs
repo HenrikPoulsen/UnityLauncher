@@ -165,6 +165,11 @@ namespace UnityLauncher.Player
                 sb.Append(string.Join(" ", ExtraArgs));
                 sb.Append(" ");
             }
+
+            if (ExpectedExitCode != 0)
+            {
+                RunLogger.LogInfo($"Expected exit code or the run will fail: {ExpectedExitCode}");
+            }
             
             if ((Flags & Flag.Batchmode) != Flag.None)
             {

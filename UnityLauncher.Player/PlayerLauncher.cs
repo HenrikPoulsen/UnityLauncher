@@ -139,7 +139,14 @@ namespace UnityLauncher.Player
             if (line == null)
                 return false;
             if (line == "A crash has been intercepted by the crash handler. For call stack and other details, see the latest crash report generated in:")
+            {
+                if (Program.ExpectedExitCode != 0)
+                {
+                    RunLogger.LogWarning($"Found a crash log, but we don't expect a clean exit code, so we won't fail the build due to this:\n{line}");
+                    return false;
+                }
                 return true;
+            }
             if (line.StartsWith("The referenced script on this Behaviour"))
                 return true;
             var firstWord = line.Split(' ', 2)[0];
