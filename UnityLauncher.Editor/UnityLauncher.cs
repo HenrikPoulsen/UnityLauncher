@@ -124,10 +124,10 @@ namespace UnityLauncher.Editor
                         RunLogger.LogError($"Failure message in the log: {line}");
                     }
                     
-                    if (IsTimeoutMessage(line))
+                    if (IsInstabilityMessage(line))
                     {
                         timeoutMessagePrinted = true;
-                        RunLogger.LogError($"Timeout message in the log: {line}");
+                        RunLogger.LogError($"Instability message in the log: {line}");
                     }
                         
                     if (IsExitMessage(line))
@@ -173,10 +173,10 @@ namespace UnityLauncher.Editor
                         while ((line = stream.ReadLine()) != null)
                         {
                             StashLine(line);
-                            if (IsTimeoutMessage(line))
+                            if (IsInstabilityMessage(line))
                             {
                                 timeoutMessagePrinted = true;
-                                RunLogger.LogError($"Timeout message in the log: {line}");
+                                RunLogger.LogError($"Instability message in the log: {line}");
                             }
                             if (IsFailureMessage(line))
                                 failureMessagePrinted = true;
@@ -247,7 +247,7 @@ namespace UnityLauncher.Editor
             return false;
         }
 
-        private static bool IsTimeoutMessage(string line)
+        private static bool IsInstabilityMessage(string line)
         {
             if (string.IsNullOrEmpty(line))
                 return false;
@@ -257,6 +257,8 @@ namespace UnityLauncher.Editor
             if (line.Contains("Cannot connect to registry"))
                 return true;
             if (line.Contains("failed to fetch from registry:"))
+                return true;
+            if (line.Contains("Cannot connect to Unity Package Manager local server"))
                 return true;
             return false;
         }
