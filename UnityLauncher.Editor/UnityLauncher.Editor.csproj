@@ -15,4 +15,7 @@
       <Name>UnityLauncher.Core</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Scripts" />
+  </ItemGroup>
 </Project>
