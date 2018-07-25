@@ -290,6 +290,8 @@ namespace UnityLauncher.Editor
                     return true;
                 case "Multiple Unity instances cannot open the same project.":
                     return true;
+                case "[Package Manager] An error occurred while resolving packages:":
+                    return true;
             }
 
             if (line.StartsWith("DirectoryNotFoundException: Could not find a part of the path"))
