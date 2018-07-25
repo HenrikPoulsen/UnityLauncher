@@ -236,14 +236,21 @@ namespace UnityLauncher.Editor
 
         private static bool IsExitMessage(string line)
         {
+            if (string.IsNullOrEmpty(line))
+                return false;
             switch (line)
             {
                 case "Cleanup mono":
                     return true;
                 case "Exiting batchmode successfully now!":
                     return true;
+                case "Aborting batchmode due to failure:":
+                    return true;
+                
             }
 
+            if (line.StartsWith("Exiting without the bug reporter. Application will terminate with return code"))
+                return true;
             return false;
         }
 

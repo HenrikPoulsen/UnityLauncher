@@ -43,13 +43,18 @@ namespace UnityLauncher.Editor
             {
                 Thread.Sleep(1000);
             }
+
+            var grabCallStack = false;
+            var lastIssueWasError = false;
             using (var reader = new StreamReader(Program.LogFile))
             {
                 string line;
                 while ((line = reader.ReadLine()) != null)
                 {
-                    if (line.Contains(": error CS"))
+                    if (line.Contains(": error CS") || line.Contains(": Internal compiler error:") || line.EndsWith(": One or more errors occurred."))
                     {
+                        grabCallStack = true;
+                        lastIssueWasError = true;
                         CompilerErrors.Add(line);
                         success = false;
                         continue;
@@ -57,6 +62,8 @@ namespace UnityLauncher.Editor
                     if (line.Contains(": warning CS"))
                     {
                         CompilerWarnings.Add(line);
+                        lastIssueWasError = false;
+                        grabCallStack = true;
                         continue;
                     }
 
@@ -65,6 +72,33 @@ namespace UnityLauncher.Editor
                     {
                         success = false;
                         continue;
+                    }
+
+                    if (grabCallStack)
+                    {
+                        if (line.StartsWith("  at ") || line.StartsWith("(Filename:"))
+                        {
+                            if (lastIssueWasError)
+                            {
+                                var index = CompilerErrors.Count-1;
+                                CompilerErrors[index] = $"{CompilerErrors[index]}\n{line}";
+                            }
+                            else
+                            {
+                                var index = CompilerWarnings.Count-1;
+                                CompilerWarnings[index] = $"{CompilerWarnings[index]}\n{line}";
+                            }
+                        }
+                        else if (string.IsNullOrEmpty(line.Trim()))
+                        {
+                            // There is frequently a new line between the error/warning and the callstack
+                            continue;
+                        }
+                        else
+                        {
+                            grabCallStack = false;
+                            continue;
+                        }
                     }
                 }
             }

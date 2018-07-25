@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Xml;
 using UnityLauncher.Core;
 
@@ -63,7 +64,9 @@ namespace UnityLauncher.Editor
 
                 for (int i = 0; i < Failures.Count; i++)
                 {
-                    RunLogger.LogError($"  {(i + 1)}: {Failures[i].Name}\n  {Failures[i].Message}\n  {Failures[i].StackTrace}\n\n");
+                    var paddedMessage = string.Join("\n", Failures[i].Message.Split('\n').Select((l) => $"        {l}").ToList());
+                    var paddedStacktrace = string.Join("\n", Failures[i].StackTrace.Split('\n').Select((l) => $"        {l}").ToList());
+                    RunLogger.LogError($"  {(i + 1)}: {Failures[i].Name}\n{paddedMessage}\n{paddedStacktrace}\n\n");
                 }
 
                 result = RunResult.Failure;
