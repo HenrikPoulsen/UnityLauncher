@@ -51,7 +51,12 @@ namespace UnityLauncher.Editor
                 string line;
                 while ((line = reader.ReadLine()) != null)
                 {
-                    if (line.Contains(": error CS") || line.Contains(": Internal compiler error:") || line.EndsWith(": One or more errors occurred."))
+                    if (line.Contains(": error CS") ||
+                        line.Contains(": Internal compiler error:")||
+                        line.EndsWith(": One or more errors occurred.") ||
+                        (
+                            line.StartsWith("(0,0):") && (line.Contains("Exception:") || line.Contains("One or more errors occurred."))
+                        ))
                     {
                         grabCallStack = true;
                         lastIssueWasError = true;
@@ -76,7 +81,10 @@ namespace UnityLauncher.Editor
 
                     if (grabCallStack)
                     {
-                        if (line.StartsWith("  at ") || line.StartsWith("(Filename:"))
+                        if (line.StartsWith("  at ") ||
+                            line.StartsWith("(Filename:") ||
+                            line.Contains("   --- End of inner exception stack trace ---") ||
+                            line.StartsWith("---> (Inner Exception"))
                         {
                             if (lastIssueWasError)
                             {
