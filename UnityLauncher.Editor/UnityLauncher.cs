@@ -270,6 +270,8 @@ namespace UnityLauncher.Editor
                 return true;
             if (line.Contains("Cannot connect to Unity Package Manager local server"))
                 return true;
+            if (line.Contains(": 404 Not Found: artifactory")) // Another packman related thing
+                return true;
             return false;
         }
 
