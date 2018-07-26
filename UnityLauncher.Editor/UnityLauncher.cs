@@ -183,6 +183,9 @@ namespace UnityLauncher.Editor
                             if (!IsExitMessage(line))
                                 continue;
 
+                            if (timeoutMessagePrinted)
+                                continue;
+
                             if (failureMessagePrinted)
                                 continue;
                             RunLogger.LogInfo("Unity has exited cleanly.");
