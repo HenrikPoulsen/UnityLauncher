@@ -53,6 +53,7 @@ namespace UnityLauncher.Editor
         static string SceneOverride;
         public static string ExpectedBuildArtifact;
         private static List<string> ExtraArgs;
+        private static List<string> AddPackages = new List<string>();
         public static int ExpectedExitCode = 0;
         public static string RegistryOverride = null;
         static int Main(string[] args)
@@ -173,6 +174,11 @@ namespace UnityLauncher.Editor
                     "scene=",
                     "Modifies the scene list to build with only the scene listed here. Needs to be the relative path to the file from the project path",
                     v => SceneOverride = v
+                },
+                {
+                    "addPackage=",
+                    "Modifies the Packages/manifest.json of the project to include the package specified. Use the format packagename@version. Ex: com.somepackage@1.0.0. Command can be repeated for multiple packages",
+                    v => AddPackages.Add(v)
                 }
                 
             };
@@ -221,7 +227,7 @@ namespace UnityLauncher.Editor
                 return -1;
             }
             
-            result = UpdateManifest(ProjectPath);
+            result = UpdateManifest(ProjectPath, AddPackages);
             if (result != 0)
             {
                 RunLogger.Dump();
@@ -469,23 +475,53 @@ namespace UnityLauncher.Editor
             return RunResult.Failure;
         }
 
-        private static int UpdateManifest(string projectPath)
+        private static int UpdateManifest(string projectPath, List<string> packages)
         {
-            if (RegistryOverride == null)
+            if (RegistryOverride == null && packages.FirstOrDefault() == null)
                 return 0;
-            RunLogger.LogInfo($"Overriding registry in manifest to be {RegistryOverride}");
+            var modified = false;
+            
             var manifestPath = $"{projectPath}/Packages/manifest.json";
-            if (!File.Exists(manifestPath))
-            {
-                RunLogger.LogError($"Could not find {manifestPath}");
-                return -1;
-            }
             var manifest = JObject.Parse(File.ReadAllText(manifestPath));
-            if (RegistryOverride == "" && manifest.ContainsKey("registry"))
-                manifest.Remove("registry");
-            else
-                manifest["registry"] = RegistryOverride;
-            File.WriteAllText(manifestPath, manifest.ToString());
+            if (RegistryOverride != null)
+            {
+                RunLogger.LogInfo($"Overriding registry in manifest to be {RegistryOverride}");
+                
+                if (!File.Exists(manifestPath))
+                {
+                    RunLogger.LogError($"Could not find {manifestPath}");
+                    return -1;
+                }
+                
+                if (RegistryOverride == "" && manifest.ContainsKey("registry"))
+                    manifest.Remove("registry");
+                else
+                    manifest["registry"] = RegistryOverride;
+                modified = true;                
+            }
+
+            if (packages.FirstOrDefault() != null)
+            {
+                foreach (var package in packages)
+                {
+                    if (!package.Contains("@"))
+                    {
+                        RunLogger.LogError($"-addPackage {0} is missing an @");
+                        return -1;
+                    }
+
+                    var split = package.Trim().Split("@");
+                    var packageName = split[0];
+                    var packageVersion = split[1];
+
+                    manifest["dependencies"][packageName] = packageVersion;
+                    modified = true;
+                }
+            }
+            
+            if(modified)
+                File.WriteAllText(manifestPath, manifest.ToString());
+            
             return 0;
         }
         
