@@ -54,6 +54,30 @@ namespace UnityLauncher.Editor
         public static string ExpectedBuildArtifact;
         private static List<string> ExtraArgs;
         private static List<string> AddPackages = new List<string>();
+        private static string BuildTarget;
+        private enum BuildTargets
+        {
+            standalone,
+            Win,
+            Win64,
+            OSXUniversal,
+            Linux,
+            Linux64,
+            LinuxUniversal,
+            iOS,
+            Android,
+            Web,
+            WebStreamed,
+            WebGL,
+            XboxOne,
+            PS4,
+            PSP2,
+            WindowsStoreApps,
+            Switch,
+            N3DS,
+            tvOS,
+            PSM
+        };
         public static int ExpectedExitCode = 0;
         public static string RegistryOverride = null;
         static int Main(string[] args)
@@ -179,6 +203,11 @@ namespace UnityLauncher.Editor
                     "addPackage=",
                     "Modifies the Packages/manifest.json of the project to include the package specified. Use the format packagename@version. Ex: com.somepackage@1.0.0. Command can be repeated for multiple packages",
                     v => AddPackages.Add(v)
+                },
+                {
+                    "buildTarget=",
+                    $"Allows the selection of an active build target before loading a project. Possible options are: {string.Join(", ", Enum.GetNames(typeof(BuildTargets)).ToList())}.",
+                    v => BuildTarget = v
                 }
                 
             };
@@ -297,6 +326,16 @@ namespace UnityLauncher.Editor
             {
                 RunLogger.LogInfo("automated is set");
                 sb.Append("-automated ");
+            }
+
+            if (!string.IsNullOrEmpty(BuildTarget))
+            {
+                if (!Enum.TryParse<BuildTargets>(BuildTarget, out var parsedEnum))
+                {
+                    RunLogger.LogError($"{BuildTarget} is not a valid buildtarget. It has to be one of:\n{string.Join(", ", Enum.GetNames(typeof(BuildTargets)))}");
+                    return -1;
+                }
+                sb.Append($"-buildTarget {BuildTarget} ");
             }
             
             if ((Flags & Flag.RunTests) != Flag.None)
