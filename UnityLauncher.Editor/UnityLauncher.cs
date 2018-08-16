@@ -301,6 +301,8 @@ namespace UnityLauncher.Editor
 
             if (line.StartsWith("DirectoryNotFoundException: Could not find a part of the path"))
                 return true;
+            if (line.StartsWith("UnityException: "))
+                return true;
             return false;
         }
     }
