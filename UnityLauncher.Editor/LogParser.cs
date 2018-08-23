@@ -51,6 +51,8 @@ namespace UnityLauncher.Editor
                 string line;
                 while ((line = reader.ReadLine()) != null)
                 {
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
                     if (line.Contains(": error CS") ||
                         line.Contains(": Internal compiler error:")||
                         line.StartsWith("UnityException: ") ||
@@ -80,13 +82,24 @@ namespace UnityLauncher.Editor
                         success = false;
                         continue;
                     }
+                    
+                    var firstWord = line.Split(' ', 2)[0];
+                    if (firstWord.EndsWith("Exception:"))
+                    {
+                        grabCallStack = true;
+                        lastIssueWasError = true;
+                        CompilerErrors.Add(line);
+                        success = false;
+                        continue;
+                    }
 
                     if (grabCallStack)
                     {
                         if (line.StartsWith("  at ") ||
                             line.StartsWith("(Filename:") ||
                             line.Contains("   --- End of inner exception stack trace ---") ||
-                            line.StartsWith("---> (Inner Exception"))
+                            line.StartsWith("---> (Inner Exception") ||
+                            line.StartsWith("Parameter name: "))
                         {
                             if (lastIssueWasError)
                             {
@@ -98,11 +111,6 @@ namespace UnityLauncher.Editor
                                 var index = CompilerWarnings.Count-1;
                                 CompilerWarnings[index] = $"{CompilerWarnings[index]}\n{line}";
                             }
-                        }
-                        else if (string.IsNullOrEmpty(line.Trim()))
-                        {
-                            // There is frequently a new line between the error/warning and the callstack
-                            continue;
                         }
                         else
                         {
