@@ -6,24 +6,29 @@ namespace UnityLauncher.Core
 {
     public static class RunLogger
     {
+        static string GetTime()
+        {
+            var time = DateTime.UtcNow;
+            return time.ToString("HH:mm:ss.fff");
+        }
         public static List<Tuple<string, bool>> result { get; set; } = new List<Tuple<string,bool>>();
         public static void LogError(string error)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"[e] {error}");
+            Console.WriteLine($"{GetTime()}: [e] {error}");
             Console.ResetColor();
         }
 
         public static void LogWarning(string warning)
         {
             Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine($"[w] {warning}");
+            Console.WriteLine($"{GetTime()}: [w] {warning}");
             Console.ResetColor();
         }
 
         public static void LogInfo(string info)
         {
-            Console.WriteLine($"[i] {info}");
+            Console.WriteLine($"{GetTime()}: [i] {info}");
         }
 
         public static void LogResultInfo(string info)
@@ -38,7 +43,7 @@ namespace UnityLauncher.Core
 
         public static void Dump()
         {
-            Console.WriteLine("Run summary:");
+            Console.WriteLine($"{GetTime()}: Run summary:");
             foreach (var entry in result)
             {
                 if(entry.Item2)
