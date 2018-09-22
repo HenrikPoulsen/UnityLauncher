@@ -422,7 +422,7 @@ namespace UnityLauncher.Editor
             }
 
      
-             runResult = ParsedCleanedLogFileForErrors(runResult);
+             runResult = ParseCleanedLogFileForErrors(runResult);
 
             if (runResult != RunResult.Success)
             {
@@ -477,7 +477,7 @@ namespace UnityLauncher.Editor
             return success;
         }
 
-        static RunResult ParsedCleanedLogFileForErrors(RunResult runResult)
+        static RunResult ParseCleanedLogFileForErrors(RunResult runResult)
         {
             if (string.IsNullOrEmpty(CleanedLogFile))
                 return runResult;
@@ -492,7 +492,7 @@ namespace UnityLauncher.Editor
             var errors = new List<string>();
             foreach (var line in content)
             {
-                if (!line.StartsWith("Assertion Failed:") && !line.Contains("(Error: "))
+                if (!line.StartsWith("Assertion Failed:") && !line.StartsWith("Assertion failed on expression:") && !line.Contains("(Error: "))
                     continue;
                 
                 errors.Add(line);

@@ -57,6 +57,9 @@ namespace UnityLauncher.Editor
                         line.Contains(": Internal compiler error:")||
                         line.StartsWith("UnityException: ") ||
                         line.StartsWith("Exception: ") ||
+                        line.StartsWith("Assertion Failed:") ||
+                        line.StartsWith("Assertion failed on expression:") ||
+                        line.Contains("(Error: ") ||
                         line.EndsWith(": One or more errors occurred.") ||
                         (
                             line.StartsWith("(0,0):") && (line.Contains("Exception:") || line.Contains("One or more errors occurred."))

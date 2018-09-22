@@ -260,6 +260,8 @@ namespace UnityLauncher.Player
                     var isError = false;
                     if (line.StartsWith("Assertion Failed:"))
                         isError = true;
+                    else if (line.StartsWith("Assertion failed on expression:"))
+                        isError = true;
                     else if (line.StartsWith("The referenced script on this Behaviour"))
                         isError = true;
                     else if (line.Contains("(Error: "))
