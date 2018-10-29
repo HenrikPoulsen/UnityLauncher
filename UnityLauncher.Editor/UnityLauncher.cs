@@ -118,6 +118,11 @@ namespace UnityLauncher.Editor
                     {
                         StashLine(line);
                     }
+                    else
+                    {
+                        // Let's chill if there is nothing new
+                        Thread.Sleep(10);
+                    }
                     if (IsFailureMessage(line))
                     {
                         failureMessagePrinted = true;

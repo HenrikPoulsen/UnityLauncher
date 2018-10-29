@@ -66,6 +66,12 @@ namespace UnityLauncher.Player
                 while (true)
                 {
                     var line = stream.ReadLine();
+                    
+                    if(line == null)
+                    {
+                        // Let's chill if there is nothing new
+                        Thread.Sleep(10);
+                    }
 
                     if (IsFailureMessage(line))
                     {
