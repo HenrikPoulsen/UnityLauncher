@@ -314,10 +314,6 @@ namespace UnityLauncher.Editor
             if (line.StartsWith("UnityException: "))
                 return true;
 
-            if (line.StartsWith("Unexpected exception "))
-                return true;
-            if (line.StartsWith("Exception while loading assemblies for burst:"))
-                return true;
             return false;
         }
     }
