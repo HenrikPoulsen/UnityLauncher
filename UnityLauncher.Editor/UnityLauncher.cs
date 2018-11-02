@@ -13,11 +13,13 @@ namespace UnityLauncher.Editor
     {
         private const int LinesToSave = 20;
         private static Queue<string> _lastLines = new Queue<string>(LinesToSave);
+        static System.IO.StreamWriter OwnLog;
 
         
         public static RunResult Run(string args)
         {
             RunLogger.LogInfo($"Will now run:\n{Program.UnityExecutable} {args}");
+            OwnLog = new StreamWriter(Program.LogFile + ".timings.log");
             ProcessResult processResult;
             const int retryLimit = 50;
             var retryCount = 0;
@@ -49,6 +51,8 @@ namespace UnityLauncher.Editor
                 process.WaitForExit();
                 retryCount++;
             } while (processResult == ProcessResult.Timeout && retryCount < retryLimit);
+            
+            OwnLog.Close();
 
             RunLogger.LogInfo($"Exeuction Done! Exit code: {process.ExitCode}");
             if (processResult == ProcessResult.Timeout)
@@ -232,6 +236,7 @@ namespace UnityLauncher.Editor
 
         private static void StashLine(string line)
         {
+            OwnLog.WriteLine($"{RunLogger.GetTime()}: {line}");
             if (_lastLines.Count >= LinesToSave)
                 _lastLines.Dequeue();
             _lastLines.Enqueue(line);
@@ -307,6 +312,11 @@ namespace UnityLauncher.Editor
             if (line.StartsWith("DirectoryNotFoundException: Could not find a part of the path"))
                 return true;
             if (line.StartsWith("UnityException: "))
+                return true;
+
+            if (line.StartsWith("Unexpected exception "))
+                return true;
+            if (line.StartsWith("Exception while loading assemblies for burst:"))
                 return true;
             return false;
         }

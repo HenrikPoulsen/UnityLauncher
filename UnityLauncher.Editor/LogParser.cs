@@ -60,6 +60,8 @@ namespace UnityLauncher.Editor
                         line.StartsWith("Assertion Failed:") ||
                         line.StartsWith("Assertion failed on expression:") ||
                         line.Contains("(Error: ") ||
+                        line.StartsWith("Unexpected exception ") ||
+                        line.StartsWith("Exception while loading assemblies for burst:") ||
                         line.EndsWith(": One or more errors occurred.") ||
                         (
                             line.StartsWith("(0,0):") && (line.Contains("Exception:") || line.Contains("One or more errors occurred."))

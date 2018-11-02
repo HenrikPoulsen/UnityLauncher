@@ -6,7 +6,7 @@ namespace UnityLauncher.Core
 {
     public static class RunLogger
     {
-        static string GetTime()
+        public static string GetTime()
         {
             var time = DateTime.UtcNow;
             return time.ToString("HH:mm:ss.fff");
