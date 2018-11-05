@@ -54,7 +54,7 @@ namespace UnityLauncher.Editor
             
             OwnLog.Close();
 
-            RunLogger.LogInfo($"Exeuction Done! Exit code: {process.ExitCode}");
+            RunLogger.LogInfo($"Execution Done! Exit code: {process.ExitCode}");
             if (processResult == ProcessResult.Timeout)
             {
                 RunLogger.LogResultError("The run has timed out and exhausted the allowed retry count. Failing run");

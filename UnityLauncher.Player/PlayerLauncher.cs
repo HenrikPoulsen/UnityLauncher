@@ -31,7 +31,7 @@ namespace UnityLauncher.Player
             var processResult = CheckForCleanupEntry(process);
             process.WaitForExit();
             
-            RunLogger.LogInfo($"Exeuction Done! Exit code: {process.ExitCode}");
+            RunLogger.LogInfo($"Execution Done! Exit code: {process.ExitCode}");
             if (processResult == ProcessResult.FailedRun)
             {
                 RunLogger.LogInfo("CheckForCleanupEntry flagged a failed run. Aborting");

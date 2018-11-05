@@ -191,7 +191,7 @@ namespace UnityLauncher.Editor
                 },
                 {
                     "timeoutIgnore",
-                    "Indicates that if the exeuction times out it should not flag it as a failure if everything else is ok",
+                    "Indicates that if the execution times out it should not flag it as a failure if everything else is ok",
                     v => Flags |= Flag.TimeoutIgnore
                 },
                 {
