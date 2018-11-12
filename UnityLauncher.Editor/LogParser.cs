@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityLauncher.Core;
+using UnityLauncher.Editor.UTP;
 
 namespace UnityLauncher.Editor
 {
@@ -46,8 +48,8 @@ namespace UnityLauncher.Editor
                 Thread.Sleep(1000);
             }
 
-            var grabCallStack = false;
-            var lastIssueWasError = false;
+            var isInTest = false;
+            var logsInTest = new List<UtpLogEntryMessage>();
             using (var reader = new StreamReader(Program.LogFile))
             {
                 string line;
@@ -59,23 +61,111 @@ namespace UnityLauncher.Editor
                     if (line.StartsWith("##utp:"))
                     {
                         var utpMessage = JsonConvert.DeserializeObject<UtpMessageBase>(line.Substring(6));
-                        if (utpMessage.Type != "LogEntry")
+                        switch (utpMessage.Type)
                         {
-                            continue;
-                        }
-                        
-                        Console.WriteLine(line);
-                        var entry = JsonConvert.DeserializeObject<UtpLogEntryMessage>(line.Substring(6));
-                        if (entry.Severity == "Info")
-                            continue;
-                        if (entry.Severity == "Warning")
-                        {
-                            Warnings.Add($"{entry.Message}\n{entry.Stacktrace}");
-                        }
-                        else
-                        {
-                            Errors.Add($"{entry.Severity}: {entry.Message}\n{entry.Stacktrace}");
-                            success = false;
+                            case "LogEntry":
+                            {
+                                var entry = JsonConvert.DeserializeObject<UtpLogEntryMessage>(line.Substring(6));
+                                if (isInTest)
+                                {
+                                    // There might be errors logs in a test which would be expected. So we save them
+                                    logsInTest.Add(entry);
+                                    continue;
+                                }
+                                if (entry.Severity == "Info")
+                                    continue;
+                                if (entry.Severity == "Warning")
+                                {
+                                    Warnings.Add($"{entry.Message}\n{entry.Stacktrace}");
+                                }
+                                else
+                                {
+                                    Errors.Add($"{entry.Severity}: {entry.Message}\n{entry.Stacktrace}");
+                                    success = false;
+                                }
+
+                                break;
+                            }
+                                
+                            case "TestStatus":
+                            {
+                                var entry = JsonConvert.DeserializeObject<UtpTestStatusMessage>(line.Substring(6));
+                                if (entry.Phase == UtpPhase.Begin)
+                                {
+                                    isInTest = true;
+                                    logsInTest.Clear();
+                                }
+                                else if(entry.Phase == UtpPhase.End)
+                                {
+                                    isInTest = false;
+                                    if (entry.State == TestStateEnum.Error || entry.State == TestStateEnum.Failure)
+                                    {
+                                        var errorString =
+                                            $"Test '{entry.Name}' reported state '{entry.State}' with message:\n{entry.Message}";
+                                        if (logsInTest.Count > 0)
+                                        {
+                                            errorString += $"\n  Logging in failed test was:\n";
+                                            foreach(var entryInTest in logsInTest)
+                                            {
+                                                errorString +=
+                                                    $"  {entryInTest.Severity}: {entryInTest.Message}\n  {entryInTest.File}:{entryInTest.Line}";
+                                            }
+
+                                            errorString += "\n";
+                                        }
+                                        RunLogger.LogError(errorString);
+                                    }
+                                }
+                                break;
+                            }
+
+                            case "TestPlan":
+                            {
+                                var entry = JsonConvert.DeserializeObject<UtpTestPlanMessage>(line.Substring(6));
+                                RunLogger.LogInfo($"Starting test run. {entry.Tests.Count} tests will be run");
+                                break;
+                            }
+
+                            case "AssemblyCompilationErrors":
+                            {
+                                var entry = JsonConvert.DeserializeObject<UtpAssemblyCompilationErrorsMessage>(line.Substring(6));
+                                var errorString = $"AssemblyCompilationErrors found {entry.Errors.Count} errors:\n";
+                                foreach (var error in entry.Errors)
+                                {
+                                    errorString += $"{error}\n";
+                                }
+                                RunLogger.LogError(errorString);
+                                break;
+                            }
+
+                            case "Action":
+                            {
+                                var entry = JsonConvert.DeserializeObject<UtpActionMessage>(line.Substring(6));
+                                if (entry.Phase == UtpPhase.Begin)
+                                {
+                                    RunLogger.LogInfo($"Action {entry.Name}: Started");
+                                }
+
+                                if (entry.Phase == UtpPhase.End)
+                                {
+                                    RunLogger.LogInfo($"Action {entry.Name}: Ended");
+                                    if (entry.Errors?.Count > 0)
+                                    {
+                                        var errorString = $"Action ended with {entry.Errors.Count} errors:\n";
+                                        foreach (var error in entry.Errors)
+                                        {
+                                            errorString += $"{error}\n";
+                                        }
+                                        RunLogger.LogError(errorString);
+                                    }
+                                }
+                                break;
+                            }
+                            default:
+                            {
+                                RunLogger.LogError($"Unknown UTP message found of type: {utpMessage.Type}");
+                                continue;
+                            }
                         }
                     }
 

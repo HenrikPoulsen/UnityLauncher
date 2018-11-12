@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace UnityLauncher.Editor {
+﻿namespace UnityLauncher.Editor.UTP {
     public class UtpLogEntryMessage : UtpMessageBase
     {
         public string Message { get; set; }
