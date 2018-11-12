@@ -311,6 +311,13 @@ namespace UnityLauncher.Editor
             return success;
         }
 
+        private static DateTime MsToDateTime(long ms)
+        {
+            TimeSpan time = TimeSpan.FromMilliseconds(ms);
+            DateTime startdate = new DateTime(1970, 1, 1) + time;
+            return startdate;
+        }
+
         private static void StashLine(string line)
         {
             OwnLog.WriteLine($"{RunLogger.GetTime()}: {line}");
@@ -372,11 +379,11 @@ namespace UnityLauncher.Editor
                         return true;
                     if (entry.Severity == "Warning")
                     {
-                        Warnings.Add($"{entry.Message}\n{entry.Stacktrace}");
+                        Warnings.Add($"{MsToDateTime(entry.Time):HH:mm:ss.fff}: {entry.Message}\n{entry.Stacktrace}");
                     }
                     else
                     {
-                        Errors.Add($"{entry.Severity}: {entry.Message}\n{entry.Stacktrace}");
+                        Errors.Add($"{MsToDateTime(entry.Time):HH:mm:ss.fff}: {entry.Severity}: {entry.Message}\n{entry.Stacktrace}");
                     }
 
                     break;
@@ -404,7 +411,7 @@ namespace UnityLauncher.Editor
                                 foreach(var entryInTest in logsInTest)
                                 {
                                     errorString +=
-                                        $"  {entryInTest.Severity}: {entryInTest.Message}\n  {entryInTest.File}:{entryInTest.Line}";
+                                        $"  {MsToDateTime(entryInTest.Time):HH:mm:ss.fff}: {entryInTest.Severity}: {entryInTest.Message}\n  {entryInTest.File}:{entryInTest.Line}";
                                 }
 
                                 errorString += "\n";
@@ -427,7 +434,7 @@ namespace UnityLauncher.Editor
                 case "AssemblyCompilationErrors":
                 {
                     var entry = JsonConvert.DeserializeObject<UtpAssemblyCompilationErrorsMessage>(line.Substring(6));
-                    var errorString = $"AssemblyCompilationErrors found {entry.Errors.Count} errors:\n";
+                    var errorString = $"{MsToDateTime(entry.Time):HH:mm:ss.fff}: AssemblyCompilationErrors found {entry.Errors.Count} errors:\n";
                     foreach (var error in entry.Errors)
                     {
                         errorString += $"{error}\n";
@@ -441,12 +448,12 @@ namespace UnityLauncher.Editor
                     var entry = JsonConvert.DeserializeObject<UtpActionMessage>(line.Substring(6));
                     if (entry.Phase == UtpPhase.Begin)
                     {
-                        RunLogger.LogInfo($"Action {entry.Name}: Started");
+                        RunLogger.LogInfo($"{MsToDateTime(entry.Time):HH:mm:ss.fff}: Action {entry.Name}: Started");
                     }
 
                     if (entry.Phase == UtpPhase.End)
                     {
-                        RunLogger.LogInfo($"Action {entry.Name}: Ended");
+                        RunLogger.LogInfo($"{MsToDateTime(entry.Time):HH:mm:ss.fff}: Action {entry.Name}: Ended");
                         if (entry.Errors?.Count > 0)
                         {
                             var errorString = $"Action ended with {entry.Errors.Count} errors:\n";
@@ -461,7 +468,7 @@ namespace UnityLauncher.Editor
                 }
                 default:
                 {
-                    RunLogger.LogError($"Unknown UTP message found of type: {utpMessage.Type}");
+                    RunLogger.LogError($"{MsToDateTime(utpMessage.Time):HH:mm:ss.fff}: Unknown UTP message found of type: {utpMessage.Type}");
                     break;
                 }
             }
