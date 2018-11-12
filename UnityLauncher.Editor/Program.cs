@@ -387,8 +387,8 @@ namespace UnityLauncher.Editor
                 return -1;
             }
                 
-            if (!LogParser.Parse())
-                runResult = RunResult.Failure;
+            //if (!LogParser.Parse())
+            //    runResult = RunResult.Failure;
 
             if (runResult != RunResult.Success && ShouldOverrideOverrideBuildFailure())
             {
