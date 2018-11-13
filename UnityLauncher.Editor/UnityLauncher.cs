@@ -448,12 +448,12 @@ namespace UnityLauncher.Editor
                     var entry = JsonConvert.DeserializeObject<UtpActionMessage>(line.Substring(6));
                     if (entry.Phase == UtpPhase.Begin)
                     {
-                        RunLogger.LogInfo($"{MsToDateTime(entry.Time):HH:mm:ss.fff}: Action {entry.Name}: Started");
+                        RunLogger.LogInfo($"{MsToDateTime(entry.Time):HH:mm:ss.fff}: Action {entry.Name}({entry.Description}): Started");
                     }
 
                     if (entry.Phase == UtpPhase.End)
                     {
-                        RunLogger.LogInfo($"{MsToDateTime(entry.Time):HH:mm:ss.fff}: Action {entry.Name}: Ended");
+                        RunLogger.LogInfo($"{MsToDateTime(entry.Time):HH:mm:ss.fff}: Action {entry.Name}({entry.Description}): Ended (duration: {entry.Duration})");
                         if (entry.Errors?.Count > 0)
                         {
                             var errorString = $"Action ended with {entry.Errors.Count} errors:\n";
