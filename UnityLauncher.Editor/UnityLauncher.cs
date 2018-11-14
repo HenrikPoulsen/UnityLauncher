@@ -375,9 +375,9 @@ namespace UnityLauncher.Editor
                         return true;
                     }
 
-                    if (entry.Severity == "Info")
+                    if (entry.Severity == LogSeverity.Info)
                         return true;
-                    if (entry.Severity == "Warning")
+                    if (entry.Severity == LogSeverity.Warning)
                     {
                         Warnings.Add($"{MsToDateTime(entry.Time):HH:mm:ss.fff}: {entry.Message}\n{entry.Stacktrace}");
                     }
