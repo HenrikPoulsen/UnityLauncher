@@ -23,7 +23,6 @@ namespace UnityLauncher.Editor
             SilentCrashes                 = 1 << 3,
             WarningsAsErrors              = 1 << 4,
             RunTests                      = 1 << 5,
-            Automated                     = 1 << 6,
             TimeoutIgnore                 = 1 << 7,
             IgnoreErrorsOnArtifactCreation= 1 << 8
         }
@@ -98,11 +97,6 @@ namespace UnityLauncher.Editor
                     "nographics",
                     "When running in batch mode, do not initialize the graphics device at all. This makes it possible to run your automated workflows on machines that don’t even have a GPU (automated workflows only work when you have a window in focus, otherwise you can’t send simulated input commands). Please note that -nographics does not allow you to bake GI, since Enlighten requires GPU acceleration.",
                     v => Flags |= Flag.NoGraphics
-                },
-                {
-                    "automated",
-                    "This flag enables some extra logging when running tests. Like when a test is started/finished/etc which is helpful for identifying which test is logging something or what the result of the test was if you don't want to parse the testresults file.",
-                    v => Flags |= Flag.Automated
                 },
                 {
                     "silentcrashes",
@@ -291,6 +285,7 @@ namespace UnityLauncher.Editor
             {
                 RunLogger.LogInfo("Batchmode is set");
                 sb.Append("-batchmode ");
+                sb.Append("-automated ");
             }
 
             if ((Flags & Flag.NoGraphics) != Flag.None)
@@ -320,12 +315,6 @@ namespace UnityLauncher.Editor
             if ((Flags & Flag.IgnoreErrorsOnArtifactCreation) != Flag.None)
             {
                 RunLogger.LogInfo("ignoreErrorsOnArtifactCreation is set");
-            }
-
-            if ((Flags & Flag.Automated) != Flag.None)
-            {
-                RunLogger.LogInfo("automated is set");
-                sb.Append("-automated ");
             }
 
             if (!string.IsNullOrEmpty(BuildTarget))
@@ -398,8 +387,8 @@ namespace UnityLauncher.Editor
                 return -1;
             }
                 
-            if (!LogParser.Parse())
-                runResult = RunResult.Failure;
+            //if (!LogParser.Parse())
+            //    runResult = RunResult.Failure;
 
             if (runResult != RunResult.Success && ShouldOverrideOverrideBuildFailure())
             {

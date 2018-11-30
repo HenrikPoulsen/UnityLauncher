@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Newtonsoft.Json;
 using UnityLauncher.Core;
+using UnityLauncher.Editor.UTP;
 
 namespace UnityLauncher.Editor
 {
@@ -43,6 +44,7 @@ namespace UnityLauncher.Editor
                 var started = process.Start();
                 RunLogger.LogInfo($"Unity process spawned with pid: {process.Id}");
                 processResult = UnityLauncherLogCrawler.CheckForCleanupEntry(process);
+                processResult = UnityLauncherLogCrawlerV2.CheckForCleanupEntry(process);
                 process.WaitForExit();
                 retryCount++;
             } while (processResult == ProcessResult.Timeout && retryCount < retryLimit);

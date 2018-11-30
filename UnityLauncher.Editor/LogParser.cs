@@ -1,16 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using UnityLauncher.Core;
+using UnityLauncher.Editor.UTP;
 
 namespace UnityLauncher.Editor
 {
     public static class LogParser
     {
-        private static readonly List<string> CompilerWarnings = new List<string>();
-        private static readonly List<string> CompilerErrors = new List<string>();
+        private static readonly List<string> Warnings = new List<string>();
+        private static readonly List<string> Errors = new List<string>();
         public static bool Parse()
         {
             bool success;
@@ -44,8 +48,8 @@ namespace UnityLauncher.Editor
                 Thread.Sleep(1000);
             }
 
-            var grabCallStack = false;
-            var lastIssueWasError = false;
+            var isInTest = false;
+            var logsInTest = new List<UtpLogEntryMessage>();
             using (var reader = new StreamReader(Program.LogFile))
             {
                 string line;
@@ -53,31 +57,8 @@ namespace UnityLauncher.Editor
                 {
                     if (string.IsNullOrWhiteSpace(line))
                         continue;
-                    if (line.Contains(": error CS") ||
-                        line.Contains(": Internal compiler error:")||
-                        line.StartsWith("UnityException: ") ||
-                        line.StartsWith("Exception: ") ||
-                        line.StartsWith("Assertion Failed:") ||
-                        line.StartsWith("Assertion failed on expression:") ||
-                        line.Contains("(Error: ") ||
-                        line.EndsWith(": One or more errors occurred.") ||
-                        (
-                            line.StartsWith("(0,0):") && (line.Contains("Exception:") || line.Contains("One or more errors occurred."))
-                        ))
-                    {
-                        grabCallStack = true;
-                        lastIssueWasError = true;
-                        CompilerErrors.Add(line);
-                        success = false;
-                        continue;
-                    }
-                    if (line.Contains(": warning CS"))
-                    {
-                        CompilerWarnings.Add(line);
-                        lastIssueWasError = false;
-                        grabCallStack = true;
-                        continue;
-                    }
+
+                    
 
                     if (line.Contains("Aborting batchmode due to failure:") ||
                         line.Contains("Scripts have compiler errors."))
@@ -85,58 +66,22 @@ namespace UnityLauncher.Editor
                         success = false;
                         continue;
                     }
-                    
-                    var firstWord = line.Split(' ', 2)[0];
-                    if (firstWord.EndsWith("Exception:"))
-                    {
-                        grabCallStack = true;
-                        lastIssueWasError = true;
-                        CompilerErrors.Add(line);
-                        success = false;
-                        continue;
-                    }
-
-                    if (grabCallStack)
-                    {
-                        if (line.StartsWith("  at ") ||
-                            line.StartsWith("(Filename:") ||
-                            line.Contains("   --- End of inner exception stack trace ---") ||
-                            line.StartsWith("---> (Inner Exception") ||
-                            line.StartsWith("Parameter name: "))
-                        {
-                            if (lastIssueWasError)
-                            {
-                                var index = CompilerErrors.Count-1;
-                                CompilerErrors[index] = $"{CompilerErrors[index]}\n{line}";
-                            }
-                            else
-                            {
-                                var index = CompilerWarnings.Count-1;
-                                CompilerWarnings[index] = $"{CompilerWarnings[index]}\n{line}";
-                            }
-                        }
-                        else
-                        {
-                            grabCallStack = false;
-                            continue;
-                        }
-                    }
                 }
             }
 
-            if (CompilerWarnings.Any())
+            if (Warnings.Any())
             {
                 Console.Write("\n");
-                RunLogger.LogInfo("Found compiler warnings:");
-                var warningsToPrint = CompilerWarnings.Count > 30 ? 30 : CompilerWarnings.Count;
+                RunLogger.LogInfo("Found warnings:");
+                var warningsToPrint = Warnings.Count > 30 ? 30 : Warnings.Count;
                 for (var i = 0; i < warningsToPrint; i++)
                 {
-                    RunLogger.LogWarning(CompilerWarnings[i]);
+                    RunLogger.LogWarning(Warnings[i]);
                 }
                 
-                if (warningsToPrint < CompilerWarnings.Count)
+                if (warningsToPrint < Warnings.Count)
                 {
-                    RunLogger.LogWarning($"Did not print all warnings. Stopped after {warningsToPrint}. There are {CompilerWarnings.Count - warningsToPrint} that have not been printed.");
+                    RunLogger.LogWarning($"Did not print all warnings. Stopped after {warningsToPrint}. There are {Warnings.Count - warningsToPrint} that have not been printed.");
                 }
                 
                 if ((Program.Flags & Program.Flag.WarningsAsErrors) != Program.Flag.None)
@@ -146,28 +91,28 @@ namespace UnityLauncher.Editor
                 }
                 Console.Write("\n");
             }
-            if (CompilerErrors.Any())
+            if (Errors.Any())
             {
                 Console.Write("\n");
-                RunLogger.LogError("Found compiler errors:");
-                var errorsToPrint = CompilerErrors.Count > 30 ? 30 : CompilerErrors.Count;
+                RunLogger.LogError("Found errors:");
+                var errorsToPrint = Errors.Count > 30 ? 30 : Errors.Count;
                 for (var i = 0; i < errorsToPrint; i++)
                 {
-                    RunLogger.LogError(CompilerErrors[i]);
+                    RunLogger.LogError(Errors[i]);
                 }
 
-                if (errorsToPrint < CompilerErrors.Count)
+                if (errorsToPrint < Errors.Count)
                 {
-                    RunLogger.LogError($"Did not print all errors. Stopped after {errorsToPrint}. There are {CompilerErrors.Count - errorsToPrint} that have not been printed.");
+                    RunLogger.LogError($"Did not print all errors. Stopped after {errorsToPrint}. There are {Errors.Count - errorsToPrint} that have not been printed.");
                 }
                 success = false;
                 Console.Write("\n");
             }
             
             if(!success)
-                RunLogger.LogResultError($"[Compiler] Found {LogParser.CompilerWarnings.Count} warnings and {LogParser.CompilerErrors.Count} errors");
+                RunLogger.LogResultError($"Found {LogParser.Warnings.Count} warnings and {LogParser.Errors.Count} errors");
             else
-                RunLogger.LogResultInfo($"[Compiler] Found {LogParser.CompilerWarnings.Count} warnings and {LogParser.CompilerErrors.Count} errors");
+                RunLogger.LogResultInfo($"Found {LogParser.Warnings.Count} warnings and {LogParser.Errors.Count} errors");
             return success;
         }
 
