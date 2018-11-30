@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using Newtonsoft.Json;
 using UnityLauncher.Core;
@@ -43,8 +44,17 @@ namespace UnityLauncher.Editor
 
                 var started = process.Start();
                 RunLogger.LogInfo($"Unity process spawned with pid: {process.Id}");
-                processResult = UnityLauncherLogCrawler.CheckForCleanupEntry(process);
-                processResult = UnityLauncherLogCrawlerV2.CheckForCleanupEntry(process);
+                if (UseV2Crawler())
+                {
+                    RunLogger.LogInfo("Using V2 log crawler");
+                    processResult = UnityLauncherLogCrawlerV2.CheckForCleanupEntry(process);    
+                }
+                else
+                {
+                    RunLogger.LogInfo("Using V1 log crawler");
+                    processResult = UnityLauncherLogCrawler.CheckForCleanupEntry(process);  
+                }
+                
                 process.WaitForExit();
                 retryCount++;
             } while (processResult == ProcessResult.Timeout && retryCount < retryLimit);
@@ -77,6 +87,42 @@ namespace UnityLauncher.Editor
             
             }
             return RunResult.Success;
+        }
+
+        private static bool UseV2Crawler()
+        {
+            var v2CutoffVersion = new UnityVersion();
+            v2CutoffVersion.SetVersion("2019.1.0a12");
+            var fs = new FileStream(Program.LogFile, FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
+            var regex = new Regex("Built from '.*' branch; Version is '(.*) \\(.*\\) revision .*'; Using compiler version '.*'");
+            using (var stream = new StreamReader(fs))
+            {         
+                while (true)
+                {
+                    var line = stream.ReadLine();
+                    if (line == null)
+                    {
+                        continue;
+                    }
+
+                    var match = regex.Match(line);
+
+                    if (!match.Success)
+                    {
+                        continue;
+                    }
+
+                    var versionString = match.Groups[1].Value;
+                    var version = new UnityVersion();
+                    version.SetVersion(versionString);
+                    
+                    if(version >= v2CutoffVersion)
+                        return true;
+                    return false;
+                }
+            }
+
+            return false;
         }
 
         private static void DeletedLogFile()

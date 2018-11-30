@@ -108,7 +108,7 @@ namespace UnityLauncher.Editor
     
                                 if (failureMessagePrinted)
                                     continue;
-                                RunLogger.LogInfo("Unity has exited cleanly.");
+                                RunLogger.LogInfo($"Unity has exited cleanly with exit code '{process.ExitCode}'.");
                                 return ProcessResult.UseExitCode;
                             }
                             
@@ -121,18 +121,18 @@ namespace UnityLauncher.Editor
                             }
                             if (waitingForDeath)
                             {
-                                RunLogger.LogInfo("Unity has exited cleanly.");
+                                RunLogger.LogInfo($"Unity has exited cleanly with exit code '{process.ExitCode}'.");
                                 return ProcessResult.UseExitCode;
                             }
     
     
                             if (failureMessagePrinted)
                             {
-                                RunLogger.LogResultError("The unity process has exited, but a log failure message was detected, flagging run as failed.");
+                                RunLogger.LogResultError($"The unity process has exited with exit code '{process.ExitCode}', but a log failure message was detected, flagging run as failed.");
                                 return ProcessResult.FailedRun;
                             }
                             var writer = new StringWriter();
-                            writer.WriteLine($"The unity process has exited, but did not print the proper cleanup, did it crash? Marking as failed. The last {LinesToSave} lines of the log was:");
+                            writer.WriteLine($"The unity process has exited with exit code '{process.ExitCode}', but did not print the proper cleanup, did it crash? Marking as failed. The last {LinesToSave} lines of the log was:");
                             foreach(var entry in _lastLines)
                             {
                                 writer.WriteLine($"  {entry}");

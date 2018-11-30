@@ -16,6 +16,7 @@ namespace UnityLauncher.Editor
         private static Queue<string> _lastLines = new Queue<string>(LinesToSave);
         private static bool failureMessagePrinted = false;
         private static bool timeoutMessagePrinted = false;
+        
         public static ProcessResult CheckForCleanupEntry(Process process)
         {
             var fs = new FileStream(Program.LogFile, FileMode.OpenOrCreate, FileAccess.Read, FileShare.ReadWrite);
@@ -28,13 +29,106 @@ namespace UnityLauncher.Editor
                 
                 while (true)
                 {
-                    CheckLastTestPrint();
+                    if(!waitingForDeath)
+                        CheckLastTestPrint();
                     var line = stream.ReadLine();
                     if (line != null)
                     {
                         StashLine(line);
                     }
-                    else
+                    else if (waitingForDeath)
+                    {
+                        Thread.Sleep(1000);
+                        if (waitingForDeathCounter-- <= 0)
+                        {
+                            if (timeoutMessagePrinted)
+                            {
+                                // Hopefully temporary hack to work around potential packman timeout issues.
+                                // So if we detect a timeout error in the log then we may want to just retry the entire run
+                                RunLogger.LogError("Editor did not quit after 10 seconds, but was also timed out. Forcibly quitting and retrying");
+                                process.Kill();
+                                ProcessWarningsAndErrors();
+                                return ProcessResult.Timeout;
+                            }
+                            RunLogger.LogInfo("Editor did not quit after 10 seconds. Forcibly quitting and whitelisting the exit code");
+                            process.Kill();
+                            if (!ProcessWarningsAndErrors())
+                                return ProcessResult.FailedRun;
+                            return ProcessResult.IgnoreExitCode;
+                        }
+
+                    } 
+                    else if (Program.ExecutionTimeout.HasValue && timeoutStopwatch.ElapsedMilliseconds > Program.ExecutionTimeout.Value * 1000)
+                    {
+                        if ((Program.Flags & Program.Flag.TimeoutIgnore) != Program.Flag.None)
+                        {
+                            RunLogger.LogResultInfo($"Execution timed out after {Program.ExecutionTimeout.Value} seconds");
+                            process.Kill();
+                            return ProcessResult.IgnoreExitCode;
+                        }
+                
+                        RunLogger.LogResultError($"Execution timed out after {Program.ExecutionTimeout.Value} seconds. Failing run");
+
+                        process.Kill();
+                        ProcessWarningsAndErrors();
+                        return ProcessResult.FailedRun;
+                    }
+                    if (process.HasExited)
+                    {
+                        while ((line = stream.ReadLine()) != null)
+                        {
+                            StashLine(line);
+                            if (HandleUtpMessage(line))
+                                continue;
+                            if (IsInstabilityMessage(line))
+                            {
+                                timeoutMessagePrinted = true;
+                                RunLogger.LogError($"Instability message in the log: {line}");
+                            }
+                            if (IsFailureMessage(line))
+                                failureMessagePrinted = true;
+                            if (!IsExitMessage(line))
+                                continue;
+
+                            if (timeoutMessagePrinted)
+                                continue;
+
+                            if (failureMessagePrinted)
+                                continue;
+                            RunLogger.LogInfo($"Unity has exited cleanly with exit code '{process.ExitCode}'.");
+                            return ProcessResult.UseExitCode;
+                        }
+                        
+                        if (timeoutMessagePrinted)
+                        {
+                            // Hopefully temporary hack to work around potential packman timeout issues.
+                            // So if we detect a timeout error in the log then we may want to just retry the entire run
+                            RunLogger.LogError("The unity process has exited, but a timeout message was found, flagging run as timed out.");
+                            return ProcessResult.Timeout;
+                        }
+                        if (waitingForDeath)
+                        {
+                            RunLogger.LogInfo($"Unity has exited cleanly with exit code '{process.ExitCode}'.");
+                            return ProcessResult.UseExitCode;
+                        }
+
+
+                        if (failureMessagePrinted)
+                        {
+                            RunLogger.LogResultError($"The unity process has exited with exit code '{process.ExitCode}', but a log failure message was detected, flagging run as failed.");
+                            return ProcessResult.FailedRun;
+                        }
+                        var writer = new StringWriter();
+                        writer.WriteLine($"The unity process has exited with exit code '{process.ExitCode}', but did not print the proper cleanup, did it crash? Marking as failed. The last {LinesToSave} lines of the log was:");
+                        foreach(var entry in _lastLines)
+                        {
+                            writer.WriteLine($"  {entry}");
+                        }
+                        RunLogger.LogResultError(writer.ToString());
+                        return ProcessResult.FailedRun;
+                    }
+                    
+                    if (line == null)
                     {
                         // Let's chill if there is nothing new
                         Thread.Sleep(10);
@@ -60,105 +154,8 @@ namespace UnityLauncher.Editor
                         RunLogger.LogInfo("Found editor shutdown log print. Waiting 10 seconds for process to quit");
                         waitingForDeath = true;
                     }
-                    if (waitingForDeath)
-                    {
-                        Thread.Sleep(1000);
-                        if (waitingForDeathCounter-- <= 0)
-                        {
-                            if (timeoutMessagePrinted)
-                            {
-                                // Hopefully temporary hack to work around potential packman timeout issues.
-                                // So if we detect a timeout error in the log then we may want to just retry the entire run
-                                RunLogger.LogError("Editor did not quit after 10 seconds, but was also timed out. Forcibly quitting and retrying");
-                                process.Kill();
-                                ProcessWarningsAndErrors();
-                                return ProcessResult.Timeout;
-                            }
-                            RunLogger.LogInfo("Editor did not quit after 10 seconds. Forcibly quitting and whitelisting the exit code");
-                            process.Kill();
-                            if (!ProcessWarningsAndErrors())
-                                return ProcessResult.FailedRun;
-                            return ProcessResult.IgnoreExitCode;
-                        }
-                    } 
-                    else if (Program.ExecutionTimeout.HasValue && timeoutStopwatch.ElapsedMilliseconds > Program.ExecutionTimeout.Value * 1000)
-                    {
-                        if ((Program.Flags & Program.Flag.TimeoutIgnore) != Program.Flag.None)
-                        {
-                            RunLogger.LogResultInfo($"Execution timed out after {Program.ExecutionTimeout.Value} seconds");
-                            process.Kill();
-                            return ProcessResult.IgnoreExitCode;
-                        }
-                        
-                        RunLogger.LogResultError($"Execution timed out after {Program.ExecutionTimeout.Value} seconds. Failing run");
-
-                        process.Kill();
-                        ProcessWarningsAndErrors();
-                        return ProcessResult.FailedRun;
-                    }
-
-                    if (process.HasExited)
-                    {
-                        while ((line = stream.ReadLine()) != null)
-                        {
-                            StashLine(line);
-                            if (IsInstabilityMessage(line))
-                            {
-                                timeoutMessagePrinted = true;
-                                RunLogger.LogError($"Instability message in the log: {line}");
-                            }
-                            if (IsFailureMessage(line))
-                                failureMessagePrinted = true;
-                            if (!IsExitMessage(line))
-                                continue;
-
-                            if (timeoutMessagePrinted)
-                                continue;
-
-                            if (failureMessagePrinted)
-                                continue;
-                            RunLogger.LogInfo("Unity has exited cleanly.");
-                            if (!ProcessWarningsAndErrors())
-                                return ProcessResult.FailedRun;
-                            return ProcessResult.UseExitCode;
-                        }
-                        
-                        if (timeoutMessagePrinted)
-                        {
-                            // Hopefully temporary hack to work around potential packman timeout issues.
-                            // So if we detect a timeout error in the log then we may want to just retry the entire run
-                            RunLogger.LogError("The unity process has exited, but a timeout message was found, flagging run as timed out.");
-                            ProcessWarningsAndErrors();
-                            return ProcessResult.Timeout;
-                        }
-                        if (waitingForDeath)
-                        {
-                            RunLogger.LogInfo("Unity has exited cleanly.");
-                            if (!ProcessWarningsAndErrors())
-                                return ProcessResult.FailedRun;
-                            return ProcessResult.UseExitCode;
-                        }
-
-
-                        if (failureMessagePrinted)
-                        {
-                            RunLogger.LogResultError("The unity process has exited, but a log failure message was detected, flagging run as failed.");
-                            ProcessWarningsAndErrors();
-                            return ProcessResult.FailedRun;
-                        }
-                        var writer = new StringWriter();
-                        writer.WriteLine($"The unity process has exited, but did not print the proper cleanup, did it crash? Marking as failed. The last {LinesToSave} lines of the log was:");
-                        foreach(var entry in _lastLines)
-                        {
-                            writer.WriteLine($"  {entry}");
-                        }
-                        RunLogger.LogResultError(writer.ToString());
-                        ProcessWarningsAndErrors();
-                        return ProcessResult.FailedRun;
-                    }
                 }
             }
-
         }
 
         private static void CheckLastTestPrint()
@@ -167,7 +164,8 @@ namespace UnityLauncher.Editor
                 return;
             if (lastTestPrint + TimeSpan.FromSeconds(10) > DateTime.UtcNow)
                 return;
-            RunLogger.LogInfo($"{testsLeft} tests remaining");
+            
+            RunLogger.LogInfo($"{testsLeft} tests remaining (current test: {currentTest})");
             lastTestPrint = DateTime.UtcNow;
         }
 
@@ -266,7 +264,7 @@ namespace UnityLauncher.Editor
         private static readonly List<string> Errors = new List<string>();
         private static int testsLeft = 0;
         private static DateTime lastTestPrint = DateTime.UtcNow;
-
+        private static string currentTest = null;
         private static bool HandleUtpMessage(string line)
         {
             if (!line.StartsWith("##utp:"))
@@ -305,6 +303,7 @@ namespace UnityLauncher.Editor
                     {
                         isInTest = true;
                         logsInTest.Clear();
+                        currentTest = entry.Name;
                     }
                     else if(entry.Phase == UtpPhase.End)
                     {
@@ -377,6 +376,9 @@ namespace UnityLauncher.Editor
                     }
                     break;
                 }
+                case "MemoryLeaks":
+                    // Do nothing
+                    break;
                 default:
                 {
                     RunLogger.LogError($"{MsToDateTime(utpMessage.Time):HH:mm:ss.fff}: Unknown UTP message found of type: {utpMessage.Type}");
