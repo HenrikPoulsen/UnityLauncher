@@ -512,7 +512,6 @@ namespace UnityLauncher.Editor
             var manifestPath = $"{projectPath}/Packages/manifest.json";
             var manifest = JObject.Parse(File.ReadAllText(manifestPath));
             if (RegistryOverride != null)
-            if (RegistryOverride != null)
             {
                 RunLogger.LogInfo($"Overriding registry in manifest to be {RegistryOverride}");
                 
